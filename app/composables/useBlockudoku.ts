@@ -43,12 +43,12 @@ export function useBlockudoku() {
   }
 
   // Abilities
-  const canRotate = usePersistentRef('blockudoku_can_rotate', false);
+  const canRotate = usePersistentRef('blockudoku_can_rotate', false); // Unlockable via milestone
   const canUndo = usePersistentRef('blockudoku_can_undo', false);
-  const rotateUses = usePersistentRef('blockudoku_rotate_uses', 0);
   const undoUses = usePersistentRef('blockudoku_undo_uses', 0);
   const removeBlockUses = usePersistentRef('blockudoku_remove_uses', 0);
-  const hintUses = usePersistentRef('blockudoku_hint_uses', 0);
+  const canHold = usePersistentRef('blockudoku_can_hold', false);
+  const heldPiece = usePersistentRef<Piece | null>('blockudoku_held_piece', null);
 
   // Score multiplier (from AP items)
   const scoreMultiplier = usePersistentRef('blockudoku_score_multiplier', 1.0);
@@ -252,9 +252,9 @@ export function useBlockudoku() {
     }
   }
 
-  // Unlock grid size
+  // Unlock grid size (allow increasing or decreasing)
   function unlockGridSize(size: number) {
-    if (size > gridSize.value) {
+    if (size !== gridSize.value) {
       gridSize.value = size;
       // Recreate grid with new size (copy old content if possible)
       const newGrid = makeGrid(size, size);
@@ -273,11 +273,6 @@ export function useBlockudoku() {
   }
 
   // Add abilities
-  function addRotateAbility() {
-    canRotate.value = true;
-    rotateUses.value++;
-  }
-
   function addUndoAbility() {
     canUndo.value = true;
     undoUses.value++;
@@ -285,10 +280,6 @@ export function useBlockudoku() {
 
   function addRemoveBlock() {
     removeBlockUses.value++;
-  }
-
-  function addHint() {
-    hintUses.value++;
   }
 
   function addScoreMultiplier(amount: number) {
@@ -305,6 +296,58 @@ export function useBlockudoku() {
     }
   }
 
+  // Hold piece functionality
+  function holdPiece(piece: Piece): boolean {
+    if (!canHold.value) return false;
+
+    // Swap the piece with the held piece
+    const temp = heldPiece.value;
+    heldPiece.value = piece;
+
+    // Remove piece from current pieces
+    const index = currentPieces.value.findIndex((p) => p === piece || p.id === piece.id);
+    if (index > -1) {
+      currentPieces.value = currentPieces.value.filter((_, i) => i !== index);
+    }
+
+    // If there was a held piece, add it back to current pieces
+    if (temp) {
+      currentPieces.value = [...currentPieces.value, temp];
+    }
+
+    return true;
+  }
+
+  // Rotate a piece 90 degrees clockwise
+  function rotatePiece(piece: Piece) {
+    if (!canRotate.value) return;
+
+    const oldShape = piece.shape;
+    const rows = oldShape.length;
+    const cols = oldShape[0]?.length || 0;
+
+    // Create new shape rotated 90 degrees clockwise
+    const newShape: BlockCell[][] = [];
+    for (let c = 0; c < cols; c++) {
+      const newRow: BlockCell[] = [];
+      for (let r = rows - 1; r >= 0; r--) {
+        newRow.push((oldShape[r]?.[c] || 0) as BlockCell);
+      }
+      newShape.push(newRow);
+    }
+
+    // Update the piece in currentPieces
+    const index = currentPieces.value.findIndex((p) => p.id === piece.id);
+    if (index !== -1) {
+      currentPieces.value = [...currentPieces.value.slice(0, index), { ...piece, shape: newShape }, ...currentPieces.value.slice(index + 1)];
+    }
+
+    // Update held piece if it's the one being rotated
+    if (heldPiece.value?.id === piece.id) {
+      heldPiece.value = { ...piece, shape: newShape };
+    }
+  }
+
   // Watch for grid size changes
   watch(gridSize, () => {
     if (grid.value.length !== gridSize.value) {
@@ -315,19 +358,20 @@ export function useBlockudoku() {
   // Single Player Mode Milestones
   const MILESTONES = [
     { id: 1, score: 100, reward: { type: 'piece', value: 1 }, description: 'Unlock 1 new piece' },
-    { id: 2, score: 250, reward: { type: 'undo', value: 3 }, description: 'Unlock Undo (3 uses)' },
+    { id: 2, score: 250, reward: { type: 'rotate', value: 1 }, description: 'Unlock Rotate ability' },
     { id: 3, score: 500, reward: { type: 'piece', value: 1 }, description: 'Unlock 1 new piece' },
     { id: 4, score: 750, reward: { type: 'slot', value: 1 }, description: 'Unlock 4th piece slot' },
-    { id: 5, score: 1000, reward: { type: 'removeBlock', value: 2 }, description: 'Remove Block (2 uses)' },
+    { id: 5, score: 1000, reward: { type: 'hold', value: 1 }, description: 'Unlock Hold Piece ability' },
     { id: 6, score: 1500, reward: { type: 'piece', value: 2 }, description: 'Unlock 2 new pieces' },
-    { id: 7, score: 2000, reward: { type: 'multiplier', value: 0.1 }, description: '1.1x Score Multiplier' },
-    { id: 8, score: 2500, reward: { type: 'gridSize', value: 7 }, description: 'Unlock 7x7 Grid' },
+    { id: 7, score: 2000, reward: { type: 'undo', value: 3 }, description: 'Unlock Undo (3 uses)' },
+    { id: 8, score: 2500, reward: { type: 'removeBlock', value: 2 }, description: 'Remove Block (2 uses)' },
     { id: 9, score: 3000, reward: { type: 'piece', value: 2 }, description: 'Unlock 2 new pieces' },
     { id: 10, score: 4000, reward: { type: 'slot', value: 1 }, description: 'Unlock 5th piece slot' },
     { id: 11, score: 5000, reward: { type: 'multiplier', value: 0.25 }, description: '1.35x Score Multiplier' },
-    { id: 12, score: 6000, reward: { type: 'removeBlock', value: 3 }, description: 'Remove Block (3 uses)' },
+    { id: 12, score: 6000, reward: { type: 'gridSize', value: 9 }, description: 'Unlock 9x9 Grid' },
     { id: 13, score: 7500, reward: { type: 'piece', value: 3 }, description: 'Unlock 3 new pieces' },
-    { id: 14, score: 10000, reward: { type: 'gridSize', value: 9 }, description: 'Unlock 9x9 Grid' },
+    { id: 14, score: 10000, reward: { type: 'removeBlock', value: 3 }, description: 'Remove Block (3 uses)' },
+    { id: 15, score: 15000, reward: { type: 'gridSize', value: 12 }, description: 'Unlock 12x12 Grid' },
   ];
 
   // Check and grant single player rewards
@@ -353,9 +397,15 @@ export function useBlockudoku() {
             addUndoAbility();
             undoUses.value += milestone.reward.value - 1;
             break;
+          case 'rotate':
+            canRotate.value = true;
+            break;
           case 'removeBlock':
             addRemoveBlock();
             removeBlockUses.value += milestone.reward.value - 1;
+            break;
+          case 'hold':
+            canHold.value = true;
             break;
           case 'slot':
             addPieceSlot();
@@ -426,10 +476,10 @@ export function useBlockudoku() {
     // Abilities
     canRotate,
     canUndo,
-    rotateUses,
     undoUses,
     removeBlockUses,
-    hintUses,
+    canHold,
+    heldPiece,
     scoreMultiplier,
     maxPieceSlots,
 
@@ -439,16 +489,16 @@ export function useBlockudoku() {
     tryPlacePiece,
     undo,
     removeBlock,
+    holdPiece,
+    rotatePiece,
     checkMilestones,
     checkSinglePlayerRewards,
 
     // Archipelago unlocks
     unlockPiece,
     unlockGridSize,
-    addRotateAbility,
     addUndoAbility,
     addRemoveBlock,
-    addHint,
     addScoreMultiplier,
     addPieceSlot,
     unlockedPieceIds,

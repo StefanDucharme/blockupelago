@@ -23,23 +23,28 @@
     totalPiecesPlaced,
     canRotate,
     canUndo,
-    rotateUses,
     undoUses,
     removeBlockUses,
-    hintUses,
+    canHold,
+    heldPiece,
+    rotatePiece,
     scoreMultiplier,
+    singlePlayerMode,
+    MILESTONES,
+    claimedMilestones,
+    maxPieceSlots,
+    unlockedPieceIds,
     initGame,
     resetStats,
     tryPlacePiece,
     undo,
     removeBlock,
+    holdPiece,
     checkMilestones,
     unlockPiece,
     unlockGridSize,
-    addRotateAbility,
     addUndoAbility,
     addRemoveBlock,
-    addHint,
     addScoreMultiplier,
     addPieceSlot,
   } = useBlockudoku();
@@ -64,7 +69,7 @@
 
   // Handle incoming Archipelago items
   watch(
-    () => items.value,
+    () => items.receivedItems.value,
     (newItems, oldItems) => {
       if (!newItems || !oldItems) return;
 
@@ -74,34 +79,68 @@
 
       if (newCount > oldCount) {
         for (let i = oldCount; i < newCount; i++) {
-          const item = newItems[i];
-          if (!item) continue;
+          const itemId = newItems[i];
+          if (!itemId) continue;
 
-          // Handle the item based on its ID or name
-          const itemId = typeof item === 'number' ? item : ITEM_NAME_TO_ID[item.name];
-
+          // Handle the item based on its ID
           switch (itemId) {
             // Piece unlocks
             case AP_ITEMS.SINGLE_BLOCK:
+              unlockPiece('Single Block');
+              break;
             case AP_ITEMS.DOMINO_I:
+              unlockPiece('Domino I');
+              break;
             case AP_ITEMS.TROMINO_I:
+              unlockPiece('Tromino I');
+              break;
             case AP_ITEMS.TROMINO_L:
+              unlockPiece('Tromino L');
+              break;
             case AP_ITEMS.TETROMINO_I:
+              unlockPiece('Tetromino I');
+              break;
             case AP_ITEMS.TETROMINO_O:
+              unlockPiece('Tetromino O');
+              break;
             case AP_ITEMS.TETROMINO_T:
+              unlockPiece('Tetromino T');
+              break;
             case AP_ITEMS.TETROMINO_L:
+              unlockPiece('Tetromino L');
+              break;
             case AP_ITEMS.TETROMINO_S:
+              unlockPiece('Tetromino S');
+              break;
             case AP_ITEMS.PENTOMINO_I:
+              unlockPiece('Pentomino I');
+              break;
             case AP_ITEMS.PENTOMINO_L:
+              unlockPiece('Pentomino L');
+              break;
             case AP_ITEMS.PENTOMINO_P:
+              unlockPiece('Pentomino P');
+              break;
             case AP_ITEMS.PENTOMINO_U:
+              unlockPiece('Pentomino U');
+              break;
             case AP_ITEMS.PENTOMINO_W:
+              unlockPiece('Pentomino W');
+              break;
             case AP_ITEMS.PENTOMINO_PLUS:
+              unlockPiece('Pentomino Plus');
+              break;
             case AP_ITEMS.BLOCK_3X3:
+              unlockPiece('3x3 Block');
+              break;
             case AP_ITEMS.CORNER_3X3:
+              unlockPiece('3x3 Corner');
+              break;
             case AP_ITEMS.T_SHAPE_3X3:
+              unlockPiece('3x3 T-Shape');
+              break;
             case AP_ITEMS.CROSS_3X3:
-              unlockPiece(item.name);
+              unlockPiece('3x3 Cross');
               break;
 
             // Grid unlocks
@@ -122,17 +161,11 @@
               break;
 
             // Abilities
-            case AP_ITEMS.ROTATE_ABILITY:
-              addRotateAbility();
-              break;
             case AP_ITEMS.UNDO_ABILITY:
               addUndoAbility();
               break;
             case AP_ITEMS.REMOVE_BLOCK:
               addRemoveBlock();
-              break;
-            case AP_ITEMS.PLACEMENT_HINT:
-              addHint();
               break;
 
             // Score multipliers
@@ -227,12 +260,16 @@
           :can-undo="canUndo"
           :undo-uses="undoUses"
           :remove-block-uses="removeBlockUses"
-          :hint-uses="hintUses"
           :score-multiplier="scoreMultiplier"
+          :can-rotate="canRotate"
+          :can-hold="canHold"
+          :held-piece="heldPiece"
           @place-piece="handlePlacePiece"
           @undo="undo"
           @remove-block="removeBlock"
           @new-game="handleNewGame"
+          @hold-piece="holdPiece"
+          @rotate-piece="rotatePiece"
         />
       </div>
 
@@ -319,7 +356,61 @@
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-neutral-300">Available Piece Slots</span>
-                  <span class="text-sm font-bold text-purple-400">{{ currentPieces.length }}</span>
+                  <span class="text-sm font-bold text-purple-400">{{ maxPieceSlots }}</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="space-y-4">
+              <h3 class="section-heading">Unlocked Abilities</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2 text-sm">
+                <div class="flex items-center justify-between">
+                  <span class="text-neutral-300">🔄 Rotate Pieces</span>
+                  <span :class="canRotate ? 'text-green-400' : 'text-neutral-500'">
+                    {{ canRotate ? '✓ Unlocked' : '✗ Locked' }}
+                  </span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-neutral-300">↶ Undo</span>
+                  <span :class="canUndo ? 'text-green-400' : 'text-neutral-500'">
+                    {{ canUndo ? `✓ (${undoUses} uses)` : '✗ Locked' }}
+                  </span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-neutral-300">🗑️ Remove Block</span>
+                  <span :class="removeBlockUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                    {{ removeBlockUses > 0 ? `✓ (${removeBlockUses} uses)` : '✗ Locked' }}
+                  </span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-neutral-300">📦 Hold Piece</span>
+                  <span :class="canHold ? 'text-green-400' : 'text-neutral-500'">
+                    {{ canHold ? '✓ Unlocked' : '✗ Locked' }}
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            <section v-if="singlePlayerMode" class="space-y-4">
+              <h3 class="section-heading">Unlocked Pieces ({{ unlockedPieceIds.length }})</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4 text-xs text-neutral-300">
+                {{ unlockedPieceIds.join(', ') }}
+              </div>
+            </section>
+
+            <section v-if="singlePlayerMode" class="space-y-4">
+              <h3 class="section-heading">Milestones Progress</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3 max-h-80 overflow-y-auto">
+                <div v-for="milestone in MILESTONES" :key="milestone.id" class="flex items-center justify-between text-xs">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                      <span :class="claimedMilestones.includes(milestone.id) ? 'text-green-400' : 'text-neutral-400'">
+                        {{ claimedMilestones.includes(milestone.id) ? '✓' : '○' }}
+                      </span>
+                      <span class="text-neutral-300">{{ milestone.score.toLocaleString() }} pts</span>
+                    </div>
+                    <div class="text-neutral-400 ml-5">{{ milestone.description }}</div>
+                  </div>
                 </div>
               </div>
             </section>
@@ -359,17 +450,6 @@
                   <span>🗑️ Remove Block</span>
                   <span class="text-xs opacity-70">{{ removeBlockUses }} available</span>
                 </button>
-
-                <button
-                  class="w-full px-4 py-3 rounded text-sm font-medium transition-colors flex items-center justify-between"
-                  :class="
-                    hintUses > 0 ? 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30' : 'bg-neutral-700/30 text-neutral-500 cursor-not-allowed'
-                  "
-                  :disabled="hintUses <= 0"
-                >
-                  <span>💡 Placement Hint</span>
-                  <span class="text-xs opacity-70">{{ hintUses }} available</span>
-                </button>
               </div>
             </section>
           </div>
@@ -390,6 +470,21 @@
             </section>
 
             <section class="space-y-3">
+              <h3 class="section-heading">Grant Rewards</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2">
+                <button type="button" class="btn-secondary w-full text-xs" @click="canRotate = true">+ Unlock Rotate</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addUndoAbility()">+ Undo Ability (1 use)</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addRemoveBlock()">+ Remove Block (1 use)</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="canHold = true">+ Unlock Hold</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addPieceSlot()">+ Piece Slot</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addScoreMultiplier(0.1)">+ 0.1x Score Multiplier</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="unlockGridSize(6)">Set Grid 6x6</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="unlockGridSize(9)">Set Grid 9x9</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="unlockGridSize(12)">Set Grid 12x12</button>
+              </div>
+            </section>
+
+            <section class="space-y-3">
               <h3 class="section-heading">Game State</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2 text-xs">
                 <div class="flex justify-between">
@@ -403,6 +498,10 @@
                 <div class="flex justify-between">
                   <span class="text-neutral-400">Can Rotate:</span>
                   <span class="text-neutral-200">{{ canRotate ? 'Yes' : 'No' }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-neutral-400">Unlocked Pieces:</span>
+                  <span class="text-neutral-200">{{ unlockedPieceIds.length }}</span>
                 </div>
               </div>
             </section>
