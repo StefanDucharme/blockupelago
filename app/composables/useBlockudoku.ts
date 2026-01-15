@@ -18,7 +18,6 @@ export function useBlockudoku() {
   // Game state
   const gridSize = usePersistentRef('blockudoku_grid_size', 6);
   const grid = usePersistentRef<BlockGrid>('blockudoku_grid', makeGrid(6, 6));
-  const score = usePersistentRef('blockudoku_score', 0);
   const totalScore = usePersistentRef('blockudoku_total_score', 0);
 
   // Clearing animation state
@@ -50,7 +49,7 @@ export function useBlockudoku() {
 
   // Game state
   const isGameOver = ref(false);
-  const lastMove = ref<{ grid: BlockGrid; pieces: Piece[]; score: number } | null>(null);
+  const lastMove = ref<{ grid: BlockGrid; pieces: Piece[]; totalScore: number } | null>(null);
 
   // Available pieces based on what's unlocked
   const availablePieces = computed(() => {
@@ -77,7 +76,6 @@ export function useBlockudoku() {
   // Initialize game
   function initGame() {
     grid.value = makeGrid(gridSize.value, gridSize.value);
-    score.value = 0;
     isGameOver.value = false;
     lastMove.value = null;
     generateNewPieces();
@@ -102,7 +100,7 @@ export function useBlockudoku() {
     lastMove.value = {
       grid: grid.value.map((r) => [...r]),
       pieces: [...currentPieces.value],
-      score: score.value,
+      totalScore: totalScore.value,
     };
 
     // Place the piece
@@ -168,7 +166,6 @@ export function useBlockudoku() {
           comboMultiplier * scoreMultiplier.value,
         );
 
-        score.value += points;
         totalScore.value += points;
 
         // Generate new pieces if all placed
@@ -205,7 +202,7 @@ export function useBlockudoku() {
 
     grid.value = lastMove.value.grid;
     currentPieces.value = lastMove.value.pieces;
-    score.value = lastMove.value.score;
+    totalScore.value = lastMove.value.totalScore;
     undoUses.value--;
     lastMove.value = null;
     isGameOver.value = false;
@@ -329,7 +326,6 @@ export function useBlockudoku() {
     // State
     grid,
     gridSize,
-    score,
     totalScore,
     currentPieces,
     isGameOver,

@@ -13,7 +13,6 @@
   const {
     grid,
     gridSize,
-    score,
     totalScore,
     currentPieces,
     isGameOver,
@@ -195,7 +194,7 @@
           </div>
           <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
             <div>
-              <div class="text-2xl font-bold text-blue-400">{{ totalScore.toLocaleString() }}</div>
+              <div class="text-2xl font-bold text-blue-400">{{ totalScore }}</div>
               <div class="text-sm text-neutral-400">Total Score</div>
             </div>
             <div>
@@ -223,7 +222,7 @@
           :grid-size="gridSize"
           :current-pieces="currentPieces"
           :is-game-over="isGameOver"
-          :score="score"
+          :total-score="totalScore"
           :clearing-cells="clearingCells"
           :can-undo="canUndo"
           :undo-uses="undoUses"
@@ -394,8 +393,8 @@
               <h3 class="section-heading">Game State</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2 text-xs">
                 <div class="flex justify-between">
-                  <span class="text-neutral-400">Current Score:</span>
-                  <span class="text-neutral-200">{{ score }}</span>
+                  <span class="text-neutral-400">Total Score:</span>
+                  <span class="text-neutral-200">{{ totalScore }}</span>
                 </div>
                 <div class="flex justify-between">
                   <span class="text-neutral-400">Game Over:</span>

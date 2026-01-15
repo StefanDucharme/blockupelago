@@ -270,11 +270,11 @@ export function useArchipelago() {
   }
 
   // Check if goal should be completed based on score
-  function checkGoalCompletion(currentScore: number) {
+  function checkGoalCompletion(score: number) {
     if (goalCompleted.value) return;
 
     const goalScore = slotData.value?.goal_score ?? 10000;
-    if (currentScore >= goalScore) {
+    if (score >= goalScore) {
       completeGoal();
     }
   }
