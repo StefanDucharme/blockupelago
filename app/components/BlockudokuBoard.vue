@@ -296,7 +296,6 @@
         @touchstart="(e) => handleDragStart(e, piece)"
       >
         <div class="flex flex-col items-center gap-2">
-          <div class="text-sm font-semibold">{{ piece.name }}</div>
           <div
             class="grid gap-0.5"
             :style="{
@@ -316,12 +315,6 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Instructions -->
-    <div v-if="!isGameOver" class="text-center text-sm text-gray-400 max-w-md">
-      <p>Click and drag pieces onto the grid to place them.</p>
-      <p>Complete rows, columns, or 3x3 boxes to clear them and score points!</p>
     </div>
 
     <!-- Floating Piece During Drag -->

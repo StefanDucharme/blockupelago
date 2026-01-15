@@ -184,15 +184,11 @@
       <!-- LEFT: Main Game Area -->
       <div class="flex-1 px-6 py-4 overflow-y-auto">
         <!-- Header -->
-        <div class="mb-6">
-          <h1 class="text-4xl font-bold text-center mb-2">Blockupelago</h1>
-          <p class="text-center text-neutral-400">Place polyomino pieces to clear rows, columns, and 3x3 boxes!</p>
-        </div>
 
         <!-- Stats Panel -->
         <div class="mb-6 p-4 bg-neutral-800/30 rounded-lg border border-neutral-700">
           <div class="flex items-center justify-between mb-2">
-            <h2 class="text-lg font-semibold">Statistics</h2>
+            <h2 class="text-lg font-semibold">Blockupelago</h2>
             <ThemePicker />
           </div>
           <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
@@ -425,7 +421,9 @@
               <span class="text-neutral-400 text-sm">Archipelago</span>
               <span :class="statusMeta.text" class="font-semibold text-sm">{{ statusMeta.label }}</span>
             </div>
-            <div class="text-xs text-white/70 hidden lg:block">Click pieces to select, then click on the grid to place</div>
+            <div class="text-xs text-white/70 hidden lg:block">
+              Click and drag pieces onto the grid. Complete rows, columns, or 3x3 boxes to clear them
+            </div>
           </div>
 
           <!-- Right side: Version info -->
