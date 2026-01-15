@@ -15,6 +15,10 @@ import { usePersistentRef } from './usePersistence';
 import { getScoreLocationId, getLineClearLocationId, getBoxClearLocationId, getComboLocationId, getPieceLocationId } from './useArchipelagoItems';
 
 export function useBlockudoku() {
+  // Game mode
+  const singlePlayerMode = usePersistentRef('blockudoku_single_player', true);
+  const claimedMilestones = usePersistentRef<number[]>('blockudoku_claimed_milestones', []);
+
   // Game state
   const gridSize = usePersistentRef('blockudoku_grid_size', 6);
   const grid = usePersistentRef<BlockGrid>('blockudoku_grid', makeGrid(6, 6));
@@ -178,6 +182,9 @@ export function useBlockudoku() {
 
         totalScore.value += points;
 
+        // Check for single player rewards
+        checkSinglePlayerRewards();
+
         // Generate new pieces if all placed
         if (currentPieces.value.length === 0) {
           generateNewPieces();
@@ -305,6 +312,69 @@ export function useBlockudoku() {
     }
   });
 
+  // Single Player Mode Milestones
+  const MILESTONES = [
+    { id: 1, score: 100, reward: { type: 'piece', value: 1 }, description: 'Unlock 1 new piece' },
+    { id: 2, score: 250, reward: { type: 'undo', value: 3 }, description: 'Unlock Undo (3 uses)' },
+    { id: 3, score: 500, reward: { type: 'piece', value: 1 }, description: 'Unlock 1 new piece' },
+    { id: 4, score: 750, reward: { type: 'slot', value: 1 }, description: 'Unlock 4th piece slot' },
+    { id: 5, score: 1000, reward: { type: 'removeBlock', value: 2 }, description: 'Remove Block (2 uses)' },
+    { id: 6, score: 1500, reward: { type: 'piece', value: 2 }, description: 'Unlock 2 new pieces' },
+    { id: 7, score: 2000, reward: { type: 'multiplier', value: 0.1 }, description: '1.1x Score Multiplier' },
+    { id: 8, score: 2500, reward: { type: 'gridSize', value: 7 }, description: 'Unlock 7x7 Grid' },
+    { id: 9, score: 3000, reward: { type: 'piece', value: 2 }, description: 'Unlock 2 new pieces' },
+    { id: 10, score: 4000, reward: { type: 'slot', value: 1 }, description: 'Unlock 5th piece slot' },
+    { id: 11, score: 5000, reward: { type: 'multiplier', value: 0.25 }, description: '1.35x Score Multiplier' },
+    { id: 12, score: 6000, reward: { type: 'removeBlock', value: 3 }, description: 'Remove Block (3 uses)' },
+    { id: 13, score: 7500, reward: { type: 'piece', value: 3 }, description: 'Unlock 3 new pieces' },
+    { id: 14, score: 10000, reward: { type: 'gridSize', value: 9 }, description: 'Unlock 9x9 Grid' },
+  ];
+
+  // Check and grant single player rewards
+  function checkSinglePlayerRewards() {
+    if (!singlePlayerMode.value) return [];
+
+    const newRewards: typeof MILESTONES = [];
+
+    for (const milestone of MILESTONES) {
+      if (totalScore.value >= milestone.score && !claimedMilestones.value.includes(milestone.id)) {
+        claimedMilestones.value = [...claimedMilestones.value, milestone.id];
+
+        // Grant the reward
+        switch (milestone.reward.type) {
+          case 'piece':
+            // Unlock random pieces
+            const availableToUnlock = ALL_PIECES.filter((p) => !unlockedPieceIds.value.includes(p.id));
+            const shuffled = [...availableToUnlock].sort(() => Math.random() - 0.5);
+            const toUnlock = shuffled.slice(0, milestone.reward.value);
+            toUnlock.forEach((piece) => unlockPiece(piece.name));
+            break;
+          case 'undo':
+            addUndoAbility();
+            undoUses.value += milestone.reward.value - 1;
+            break;
+          case 'removeBlock':
+            addRemoveBlock();
+            removeBlockUses.value += milestone.reward.value - 1;
+            break;
+          case 'slot':
+            addPieceSlot();
+            break;
+          case 'multiplier':
+            addScoreMultiplier(milestone.reward.value);
+            break;
+          case 'gridSize':
+            unlockGridSize(milestone.reward.value);
+            break;
+        }
+
+        newRewards.push(milestone);
+      }
+    }
+
+    return newRewards;
+  }
+
   // Check for milestone achievements and return location IDs to send to AP
   function checkMilestones(): number[] {
     const checks: number[] = [];
@@ -342,6 +412,11 @@ export function useBlockudoku() {
     availablePieces,
     clearingCells,
 
+    // Mode
+    singlePlayerMode,
+    MILESTONES,
+    claimedMilestones,
+
     // Statistics
     totalLinesCleared,
     totalBoxesCleared,
@@ -365,6 +440,7 @@ export function useBlockudoku() {
     undo,
     removeBlock,
     checkMilestones,
+    checkSinglePlayerRewards,
 
     // Archipelago unlocks
     unlockPiece,
