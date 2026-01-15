@@ -234,10 +234,8 @@ export function placePiece(grid: BlockGrid, piece: Piece, row: number, col: numb
       if (piece.shape[r]?.[c] === 1) {
         const targetRow = newGrid[row + r];
         if (targetRow) {
-          // Preserve gem (2) or set to filled (1)
-          if (targetRow[col + c] !== 2) {
-            targetRow[col + c] = 1;
-          }
+          // Always set to filled (1), gems are tracked separately in gemCells
+          targetRow[col + c] = 1;
         }
       }
     }
