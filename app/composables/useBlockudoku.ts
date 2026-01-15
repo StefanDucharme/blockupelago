@@ -30,7 +30,13 @@ export function useBlockudoku() {
   const totalPiecesPlaced = usePersistentRef('blockudoku_pieces_placed', 0);
 
   // Unlocked pieces (from Archipelago)
-  const unlockedPieceIds = usePersistentRef<string[]>('blockudoku_unlocked_pieces', ['single', 'domino_i', 'tromino_i', 'tromino_l', 'tetromino_i']);
+  const unlockedPieceIds = usePersistentRef<string[]>('blockudoku_unlocked_pieces', []);
+
+  // Initialize unlocked pieces if empty
+  if (unlockedPieceIds.value.length === 0) {
+    const shuffled = [...ALL_PIECES].sort(() => Math.random() - 0.5);
+    unlockedPieceIds.value = shuffled.slice(0, 3).map((p) => p.id);
+  }
 
   // Abilities
   const canRotate = usePersistentRef('blockudoku_can_rotate', false);
@@ -88,6 +94,10 @@ export function useBlockudoku() {
     totalBoxesCleared.value = 0;
     totalCombos.value = 0;
     totalPiecesPlaced.value = 0;
+
+    // Reset to 3 random unique pieces
+    const shuffled = [...ALL_PIECES].sort(() => Math.random() - 0.5);
+    unlockedPieceIds.value = shuffled.slice(0, 3).map((p) => p.id);
   }
 
   // Place a piece
