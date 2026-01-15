@@ -37,6 +37,7 @@ export function useBlockudoku() {
   const totalBoxesCleared = usePersistentRef('blockudoku_boxes_cleared', 0);
   const totalCombos = usePersistentRef('blockudoku_combos', 0);
   const totalPiecesPlaced = usePersistentRef('blockudoku_pieces_placed', 0);
+  const totalGemsCollected = usePersistentRef('blockudoku_gems_collected', 0);
 
   // Unlocked pieces (from Archipelago)
   const unlockedPieceIds = usePersistentRef<string[]>('blockudoku_unlocked_pieces', []);
@@ -122,6 +123,7 @@ export function useBlockudoku() {
     grid.value = makeGrid(gridSize.value, gridSize.value);
     isGameOver.value = false;
     lastMove.value = null;
+    heldPiece.value = null;
     generateNewPieces();
   }
 
@@ -132,6 +134,20 @@ export function useBlockudoku() {
     totalBoxesCleared.value = 0;
     totalCombos.value = 0;
     totalPiecesPlaced.value = 0;
+    totalGemsCollected.value = 0;
+    heldPiece.value = null;
+    gemCells.value = [];
+
+    // Reset progression and abilities
+    claimedMilestones.value = [];
+    canRotate.value = false;
+    canUndo.value = false;
+    undoUses.value = 0;
+    removeBlockUses.value = 0;
+    canHold.value = false;
+    scoreMultiplier.value = 1.0;
+    maxPieceSlots.value = 3;
+    gridSize.value = 6;
 
     // Reset to 3 random unique pieces
     const shuffled = [...ALL_PIECES].sort(() => Math.random() - 0.5);
@@ -158,6 +174,11 @@ export function useBlockudoku() {
     const index = currentPieces.value.findIndex((p) => p === piece || p.id === piece.id);
     if (index > -1) {
       currentPieces.value = currentPieces.value.filter((_, i) => i !== index);
+    }
+
+    // Also clear from held piece if it matches
+    if (heldPiece.value?.id === piece.id) {
+      heldPiece.value = null;
     }
 
     totalPiecesPlaced.value++;
@@ -233,12 +254,14 @@ export function useBlockudoku() {
         });
 
         // Remove gems (in reverse order to avoid index issues)
-        [...new Set(gemsToRemove)]
+        const gemsCollected = [...new Set(gemsToRemove)];
+        gemsCollected
           .sort((a, b) => b - a)
           .forEach((index) => {
             const gem = gemCells.value[index];
             if (gem) {
               console.log('💎 Gem collected via line clear! Check ID:', gem.checkId);
+              totalGemsCollected.value++;
             }
             gemCells.value.splice(index, 1);
           });
@@ -554,6 +577,7 @@ export function useBlockudoku() {
     totalBoxesCleared,
     totalCombos,
     totalPiecesPlaced,
+    totalGemsCollected,
 
     // Abilities
     canRotate,

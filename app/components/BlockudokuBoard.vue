@@ -299,14 +299,17 @@
       <div class="flex flex-col gap-2">
         <div class="text-xs text-center text-neutral-400">Hold (H)</div>
         <div
+          v-if="heldPiece"
           :class="[
-            'p-4 rounded-lg transition-all w-22 h-22 flex items-center justify-center',
-            canHold ? 'bg-gray-700/50 border-2 border-dashed border-gray-500' : 'bg-gray-800/30 border-2 border-gray-700/30',
-            !canHold && 'opacity-50 cursor-not-allowed',
+            'p-4 rounded-lg transition-all w-22 h-22 flex items-center justify-center cursor-grab active:cursor-grabbing',
+            selectedPiece === heldPiece ? 'bg-blue-700 scale-110' : 'bg-gray-700/50 border-2 border-dashed border-gray-500',
+            isDragging && draggedPiece === heldPiece ? 'opacity-50' : '',
           ]"
+          @click="selectPiece(heldPiece)"
+          @mousedown="(e) => heldPiece && handleDragStart(e, heldPiece)"
+          @touchstart="(e) => heldPiece && handleDragStart(e, heldPiece)"
         >
           <div
-            v-if="heldPiece"
             class="grid gap-0.5"
             :style="{
               gridTemplateColumns: `repeat(${heldPiece.shape[0]?.length || 0}, 20px)`,
@@ -323,7 +326,16 @@
               />
             </div>
           </div>
-          <div v-else-if="!canHold" class="text-xs text-center text-neutral-600">Locked</div>
+        </div>
+        <div
+          v-else
+          :class="[
+            'p-4 rounded-lg transition-all w-22 h-22 flex items-center justify-center',
+            canHold ? 'bg-gray-700/50 border-2 border-dashed border-gray-500' : 'bg-gray-800/30 border-2 border-gray-700/30',
+            !canHold && 'opacity-50 cursor-not-allowed',
+          ]"
+        >
+          <div v-if="!canHold" class="text-xs text-center text-neutral-600">Locked</div>
           <div v-else class="text-xs text-center text-neutral-500">Empty</div>
         </div>
       </div>

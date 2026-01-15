@@ -22,6 +22,7 @@
     totalBoxesCleared,
     totalCombos,
     totalPiecesPlaced,
+    totalGemsCollected,
     canRotate,
     canUndo,
     undoUses,
@@ -227,7 +228,7 @@
             <h2 class="text-lg font-semibold">Blockupelago</h2>
             <ThemePicker />
           </div>
-          <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+          <div class="grid grid-cols-2 md:grid-cols-6 gap-4 text-center">
             <div>
               <div class="text-2xl font-bold text-blue-400">{{ totalScore }}</div>
               <div class="text-sm text-neutral-400">Total Score</div>
@@ -247,6 +248,10 @@
             <div>
               <div class="text-2xl font-bold text-orange-400">{{ totalPiecesPlaced }}</div>
               <div class="text-sm text-neutral-400">Pieces</div>
+            </div>
+            <div>
+              <div class="text-2xl font-bold text-pink-400">{{ totalGemsCollected }}</div>
+              <div class="text-sm text-neutral-400">Gems</div>
             </div>
           </div>
         </div>
