@@ -30,6 +30,7 @@
     hintUses,
     scoreMultiplier,
     initGame,
+    resetStats,
     tryPlacePiece,
     undo,
     removeBlock,
@@ -170,6 +171,7 @@
   }
 
   function handleNewGame() {
+    resetStats();
     initGame();
   }
 
@@ -384,7 +386,7 @@
               <h3 class="section-heading">Actions</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3">
                 <button type="button" class="btn-secondary w-full" @click="handleNewGame()">New Game</button>
-                <button type="button" class="btn-destructive w-full" @click="initGame()">Reset All Progress</button>
+                <button type="button" class="btn-destructive w-full" @click="handleNewGame()">Reset All Progress</button>
               </div>
             </section>
 
