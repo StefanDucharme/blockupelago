@@ -9,6 +9,7 @@
     currentPieces: Piece[];
     isGameOver: boolean;
     score: number;
+    clearingCells: Set<string>;
     canUndo: boolean;
     undoUses: number;
     removeBlockUses: number;
@@ -123,12 +124,14 @@
     const isBox = props.gridSize === 9;
     const boxBorder = isBox && (row % 3 === 0 || col % 3 === 0);
     const cellValue = props.grid[row]?.[col];
+    const isClearing = props.clearingCells.has(`${row}-${col}`);
 
     return `
         ${cellValue === 1 ? 'bg-blue-500' : 'bg-gray-800'}
         ${boxBorder ? 'border-gray-600' : 'border-gray-700'}
         ${isPreviewCell(row, col) ? (canPlaceAtHovered.value ? 'bg-green-400 border-green-500' : 'bg-red-400 border-red-500') : ''}
         ${removeMode.value && cellValue === 1 ? 'hover:bg-red-500' : ''}
+        ${isClearing ? 'clearing-cell' : ''}
       `;
   }
 
@@ -350,3 +353,25 @@
     </div>
   </div>
 </template>
+
+<style scoped>
+  @keyframes clearPulse {
+    0% {
+      transform: scale(1);
+      background-color: rgb(59 130 246);
+    }
+    50% {
+      transform: scale(1.1);
+      background-color: rgb(251 191 36);
+      box-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
+    }
+    100% {
+      transform: scale(0.8);
+      opacity: 0;
+    }
+  }
+
+  .clearing-cell {
+    animation: clearPulse 0.4s ease-out forwards;
+  }
+</style>

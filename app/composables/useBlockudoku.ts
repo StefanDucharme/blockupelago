@@ -21,6 +21,9 @@ export function useBlockudoku() {
   const score = usePersistentRef('blockudoku_score', 0);
   const totalScore = usePersistentRef('blockudoku_total_score', 0);
 
+  // Clearing animation state
+  const clearingCells = ref<Set<string>>(new Set()); // Set of "row-col" strings
+
   // Statistics for Archipelago checks
   const totalLinesCleared = usePersistentRef('blockudoku_lines_cleared', 0);
   const totalBoxesCleared = usePersistentRef('blockudoku_boxes_cleared', 0);
@@ -116,28 +119,58 @@ export function useBlockudoku() {
     // Check for clears
     const clearResult = clearCompleted(grid.value);
     if (clearResult.totalClears > 0) {
-      grid.value = clearResult.newGrid;
+      // Mark cells as clearing for animation
+      clearingCells.value = new Set();
 
-      // Update statistics
-      totalLinesCleared.value += clearResult.clearedRows.length + clearResult.clearedCols.length;
-      totalBoxesCleared.value += clearResult.clearedBoxes.length;
+      // Add all cells that will be cleared
+      clearResult.clearedRows.forEach((row) => {
+        for (let col = 0; col < gridSize.value; col++) {
+          clearingCells.value.add(`${row}-${col}`);
+        }
+      });
 
-      // Count as combo if multiple clears
-      if (clearResult.totalClears > 1) {
-        totalCombos.value++;
-      }
+      clearResult.clearedCols.forEach((col) => {
+        for (let row = 0; row < gridSize.value; row++) {
+          clearingCells.value.add(`${row}-${col}`);
+        }
+      });
 
-      // Calculate score
-      const comboMultiplier = clearResult.totalClears > 1 ? clearResult.totalClears : 1;
-      const points = calculateScore(
-        clearResult.clearedRows.length,
-        clearResult.clearedCols.length,
-        clearResult.clearedBoxes.length,
-        comboMultiplier * scoreMultiplier.value,
-      );
+      clearResult.clearedBoxes.forEach((boxIdx) => {
+        const boxRow = Math.floor(boxIdx / 3);
+        const boxCol = boxIdx % 3;
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            clearingCells.value.add(`${boxRow * 3 + r}-${boxCol * 3 + c}`);
+          }
+        }
+      });
 
-      score.value += points;
-      totalScore.value += points;
+      // Delay the actual clear to allow animation to play
+      setTimeout(() => {
+        grid.value = clearResult.newGrid;
+        clearingCells.value = new Set();
+
+        // Update statistics
+        totalLinesCleared.value += clearResult.clearedRows.length + clearResult.clearedCols.length;
+        totalBoxesCleared.value += clearResult.clearedBoxes.length;
+
+        // Count as combo if multiple clears
+        if (clearResult.totalClears > 1) {
+          totalCombos.value++;
+        }
+
+        // Calculate score
+        const comboMultiplier = clearResult.totalClears > 1 ? clearResult.totalClears : 1;
+        const points = calculateScore(
+          clearResult.clearedRows.length,
+          clearResult.clearedCols.length,
+          clearResult.clearedBoxes.length,
+          comboMultiplier * scoreMultiplier.value,
+        );
+
+        score.value += points;
+        totalScore.value += points;
+      }, 400); // Animation duration
     }
 
     // Generate new pieces if all placed
@@ -290,6 +323,7 @@ export function useBlockudoku() {
     currentPieces,
     isGameOver,
     availablePieces,
+    clearingCells,
 
     // Statistics
     totalLinesCleared,

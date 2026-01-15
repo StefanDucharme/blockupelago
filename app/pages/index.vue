@@ -17,6 +17,7 @@
     totalScore,
     currentPieces,
     isGameOver,
+    clearingCells,
     totalLinesCleared,
     totalBoxesCleared,
     totalCombos,
@@ -225,6 +226,7 @@
           :current-pieces="currentPieces"
           :is-game-over="isGameOver"
           :score="score"
+          :clearing-cells="clearingCells"
           :can-undo="canUndo"
           :undo-uses="undoUses"
           :remove-block-uses="removeBlockUses"
