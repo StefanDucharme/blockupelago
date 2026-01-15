@@ -10,6 +10,7 @@
     isGameOver: boolean;
     totalScore: number;
     clearingCells: Set<string>;
+    gemCells: { row: number; col: number; checkId: number }[];
     canUndo: boolean;
     undoUses: number;
     removeBlockUses: number;
@@ -130,8 +131,11 @@
     const cellValue = props.grid[row]?.[col];
     const isClearing = props.clearingCells.has(`${row}-${col}`);
 
+    // Gems no longer affect background, just use normal cell coloring
+    let bgColor = cellValue === 1 ? 'bg-blue-500' : 'bg-gray-800';
+
     return `
-        ${cellValue === 1 ? 'bg-blue-500' : 'bg-gray-800'}
+        ${bgColor}
         ${boxBorder ? 'border-gray-600' : 'border-gray-700'}
         ${isPreviewCell(row, col) ? (canPlaceAtHovered.value ? 'bg-green-400 border-green-500' : 'bg-red-400 border-red-500') : ''}
         ${removeMode.value && cellValue === 1 ? 'hover:bg-red-500' : ''}
@@ -276,10 +280,16 @@
           v-for="(cell, colIdx) in row"
           :key="`cell-${rowIdx}-${colIdx}`"
           :class="getCellClass(rowIdx, colIdx)"
-          class="border transition-colors cursor-pointer"
+          class="border transition-colors cursor-pointer relative flex items-center justify-center"
           @click="handleCellClick(rowIdx, colIdx)"
           @mouseenter="handleCellHover(rowIdx, colIdx)"
-        />
+        >
+          <div
+            v-if="cell === 2 || gemCells.some((g) => g.row === rowIdx && g.col === colIdx)"
+            class="w-4 h-4 rounded-full bg-linear-to-br from-purple-500 via-pink-500 to-yellow-500 animate-pulse"
+            style="box-shadow: 0 0 8px rgba(236, 72, 153, 0.6)"
+          />
+        </div>
       </div>
     </div>
 

@@ -17,6 +17,7 @@
     currentPieces,
     isGameOver,
     clearingCells,
+    gemCells,
     totalLinesCleared,
     totalBoxesCleared,
     totalCombos,
@@ -40,6 +41,7 @@
     undo,
     removeBlock,
     holdPiece,
+    spawnGem,
     checkMilestones,
     unlockPiece,
     unlockGridSize,
@@ -257,6 +259,7 @@
           :is-game-over="isGameOver"
           :total-score="totalScore"
           :clearing-cells="clearingCells"
+          :gem-cells="gemCells"
           :can-undo="canUndo"
           :undo-uses="undoUses"
           :remove-block-uses="removeBlockUses"
@@ -476,6 +479,7 @@
                 <button type="button" class="btn-secondary w-full text-xs" @click="addUndoAbility()">+ Undo Ability (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addRemoveBlock()">+ Remove Block (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="canHold = true">+ Unlock Hold</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="spawnGem()">💎 Spawn Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addPieceSlot()">+ Piece Slot</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addScoreMultiplier(0.1)">+ 0.1x Score Multiplier</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="unlockGridSize(6)">Set Grid 6x6</button>

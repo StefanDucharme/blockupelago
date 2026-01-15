@@ -1,7 +1,14 @@
 // Blockudoku game logic utilities
 
-export type BlockCell = 0 | 1; // 0 = empty, 1 = filled
+export type BlockCell = 0 | 1 | 2; // 0 = empty, 1 = filled, 2 = gem
 export type BlockGrid = BlockCell[][];
+
+// Gem cell info for Archipelago checks
+export interface GemCell {
+  row: number;
+  col: number;
+  checkId: number; // Archipelago location ID
+}
 
 // Polyomino piece definition
 export interface Piece {
@@ -200,11 +207,13 @@ export function canPlacePiece(grid: BlockGrid, piece: Piece, row: number, col: n
     return false;
   }
 
-  // Check if all cells where the piece would be placed are empty
+  // Check if all cells where the piece would be placed are empty (or gems)
   for (let r = 0; r < pieceRows; r++) {
     for (let c = 0; c < pieceCols; c++) {
       if (piece.shape[r]?.[c] === 1) {
-        if (grid[row + r]?.[col + c] !== 0) {
+        const cellValue = grid[row + r]?.[col + c];
+        // Only block if cell is filled (1), not if empty (0) or gem (2)
+        if (cellValue === 1) {
           return false;
         }
       }
@@ -224,7 +233,12 @@ export function placePiece(grid: BlockGrid, piece: Piece, row: number, col: numb
     for (let c = 0; c < pieceCols; c++) {
       if (piece.shape[r]?.[c] === 1) {
         const targetRow = newGrid[row + r];
-        if (targetRow) targetRow[col + c] = 1;
+        if (targetRow) {
+          // Preserve gem (2) or set to filled (1)
+          if (targetRow[col + c] !== 2) {
+            targetRow[col + c] = 1;
+          }
+        }
       }
     }
   }

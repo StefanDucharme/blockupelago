@@ -27,6 +27,11 @@ export function useBlockudoku() {
   // Clearing animation state
   const clearingCells = ref<Set<string>>(new Set()); // Set of "row-col" strings
 
+  // Gem cells (Archipelago checks)
+  const gemCells = ref<{ row: number; col: number; checkId: number }[]>([]);
+  const gemSpawnChance = 0.3; // 30% chance to spawn a gem on piece restock
+  const nextGemCheckId = ref(10000000); // Starting ID for gem checks
+
   // Statistics for Archipelago checks
   const totalLinesCleared = usePersistentRef('blockudoku_lines_cleared', 0);
   const totalBoxesCleared = usePersistentRef('blockudoku_boxes_cleared', 0);
@@ -81,6 +86,35 @@ export function useBlockudoku() {
       return;
     }
     currentPieces.value = generatePieces(availablePieces.value, maxPieceSlots.value);
+
+    // Random chance to spawn a gem on the grid
+    if (Math.random() < gemSpawnChance) {
+      spawnGem();
+    }
+  }
+
+  // Spawn a gem in a random empty cell
+  function spawnGem() {
+    // Find all empty cells
+    const emptyCells: { row: number; col: number }[] = [];
+    for (let r = 0; r < grid.value.length; r++) {
+      for (let c = 0; c < grid.value[r]!.length; c++) {
+        if (grid.value[r]![c] === 0) {
+          emptyCells.push({ row: r, col: c });
+        }
+      }
+    }
+
+    if (emptyCells.length === 0) return;
+
+    // Pick a random empty cell
+    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    if (!randomCell) return;
+
+    // Place gem and track it
+    grid.value[randomCell.row]![randomCell.col] = 2;
+    const checkId = nextGemCheckId.value++;
+    gemCells.value.push({ row: randomCell.row, col: randomCell.col, checkId });
   }
 
   // Initialize game
@@ -161,6 +195,53 @@ export function useBlockudoku() {
       setTimeout(() => {
         grid.value = clearResult.newGrid;
         clearingCells.value = new Set();
+
+        // Clear any gems in the cleared rows/cols/boxes
+        const gemsToRemove: number[] = [];
+
+        clearResult.clearedRows.forEach((row) => {
+          for (let col = 0; col < gridSize.value; col++) {
+            const gemIndex = gemCells.value.findIndex((g) => g.row === row && g.col === col);
+            if (gemIndex !== -1 && gemCells.value[gemIndex]) {
+              gemsToRemove.push(gemIndex);
+            }
+          }
+        });
+
+        clearResult.clearedCols.forEach((col) => {
+          for (let row = 0; row < gridSize.value; row++) {
+            const gemIndex = gemCells.value.findIndex((g) => g.row === row && g.col === col);
+            if (gemIndex !== -1 && gemCells.value[gemIndex]) {
+              gemsToRemove.push(gemIndex);
+            }
+          }
+        });
+
+        clearResult.clearedBoxes.forEach((boxIdx) => {
+          const boxRow = Math.floor(boxIdx / 3);
+          const boxCol = boxIdx % 3;
+          for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+              const actualRow = boxRow * 3 + r;
+              const actualCol = boxCol * 3 + c;
+              const gemIndex = gemCells.value.findIndex((g) => g.row === actualRow && g.col === actualCol);
+              if (gemIndex !== -1 && gemCells.value[gemIndex]) {
+                gemsToRemove.push(gemIndex);
+              }
+            }
+          }
+        });
+
+        // Remove gems (in reverse order to avoid index issues)
+        [...new Set(gemsToRemove)]
+          .sort((a, b) => b - a)
+          .forEach((index) => {
+            const gem = gemCells.value[index];
+            if (gem) {
+              console.log('💎 Gem collected via line clear! Check ID:', gem.checkId);
+            }
+            gemCells.value.splice(index, 1);
+          });
 
         // Update statistics
         totalLinesCleared.value += clearResult.clearedRows.length + clearResult.clearedCols.length;
@@ -461,6 +542,7 @@ export function useBlockudoku() {
     isGameOver,
     availablePieces,
     clearingCells,
+    gemCells,
 
     // Mode
     singlePlayerMode,
@@ -491,6 +573,7 @@ export function useBlockudoku() {
     removeBlock,
     holdPiece,
     rotatePiece,
+    spawnGem,
     checkMilestones,
     checkSinglePlayerRewards,
 
