@@ -170,17 +170,28 @@ export function useBlockudoku() {
 
         score.value += points;
         totalScore.value += points;
+
+        // Generate new pieces if all placed
+        if (currentPieces.value.length === 0) {
+          generateNewPieces();
+        }
+
+        // Check for game over after clearing
+        if (checkGameOver()) {
+          isGameOver.value = true;
+        }
       }, 400); // Animation duration
-    }
+    } else {
+      // No clears, check immediately
+      // Generate new pieces if all placed
+      if (currentPieces.value.length === 0) {
+        generateNewPieces();
+      }
 
-    // Generate new pieces if all placed
-    if (currentPieces.value.length === 0) {
-      generateNewPieces();
-    }
-
-    // Check for game over
-    if (checkGameOver()) {
-      isGameOver.value = true;
+      // Check for game over
+      if (checkGameOver()) {
+        isGameOver.value = true;
+      }
     }
 
     return true;
