@@ -234,7 +234,7 @@
     <!-- Score and Controls -->
     <div class="flex items-center justify-between w-full max-w-2xl">
       <div class="text-2xl font-bold">
-        Score: {{ totalScore.toLocaleString() }}
+        Score: {{ totalScore }}
         <span v-if="scoreMultiplier > 1" class="text-sm text-green-400"> (×{{ scoreMultiplier.toFixed(1) }}) </span>
       </div>
 
