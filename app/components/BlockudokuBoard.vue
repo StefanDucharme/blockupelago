@@ -27,6 +27,12 @@
   const hoveredCell = ref<{ row: number; col: number } | null>(null);
   const removeMode = ref(false);
 
+  // Drag-and-drop state
+  const isDragging = ref(false);
+  const draggedPiece = ref<Piece | null>(null);
+  const dragPosition = ref<{ x: number; y: number }>({ x: 0, y: 0 });
+  const gridRef = ref<HTMLElement | null>(null);
+
   // Calculate cell size based on grid size
   const cellSize = computed(() => {
     const maxSize = 40;
@@ -111,6 +117,75 @@
       selectedPiece.value = null;
     }
   }
+
+  // Drag-and-drop handlers
+  function handleDragStart(event: MouseEvent | TouchEvent, piece: Piece) {
+    isDragging.value = true;
+    draggedPiece.value = piece;
+    selectedPiece.value = piece;
+
+    const clientX = 'touches' in event ? event.touches[0]?.clientX ?? 0 : event.clientX;
+    const clientY = 'touches' in event ? event.touches[0]?.clientY ?? 0 : event.clientY;
+
+    dragPosition.value = { x: clientX, y: clientY };
+
+    // Prevent default to avoid text selection
+    event.preventDefault();
+  }
+
+  function handleDragMove(event: MouseEvent | TouchEvent) {
+    if (!isDragging.value) return;
+
+    const clientX = 'touches' in event ? event.touches[0]?.clientX ?? 0 : event.clientX;
+    const clientY = 'touches' in event ? event.touches[0]?.clientY ?? 0 : event.clientY;
+
+    dragPosition.value = { x: clientX, y: clientY };
+
+    // Update hovered cell based on drag position
+    if (gridRef.value) {
+      const gridRect = gridRef.value.getBoundingClientRect();
+      const relX = clientX - gridRect.left;
+      const relY = clientY - gridRect.top;
+
+      if (relX >= 0 && relX < gridRect.width && relY >= 0 && relY < gridRect.height) {
+        const col = Math.floor((relX / gridRect.width) * props.gridSize);
+        const row = Math.floor((relY / gridRect.height) * props.gridSize);
+
+        if (row >= 0 && row < props.gridSize && col >= 0 && col < props.gridSize) {
+          hoveredCell.value = { row, col };
+        }
+      } else {
+        hoveredCell.value = null;
+      }
+    }
+
+    event.preventDefault();
+  }
+
+  function handleDragEnd(event: MouseEvent | TouchEvent) {
+    if (!isDragging.value || !draggedPiece.value) return;
+
+    // Try to place the piece at the hovered cell
+    if (hoveredCell.value && canPlaceAtHovered.value) {
+      emit('place-piece', draggedPiece.value, hoveredCell.value.row, hoveredCell.value.col);
+    }
+
+    // Reset drag state
+    isDragging.value = false;
+    draggedPiece.value = null;
+    selectedPiece.value = null;
+    hoveredCell.value = null;
+
+    event.preventDefault();
+  }
+
+  // Add global listeners for drag
+  if (typeof window !== 'undefined') {
+    document.addEventListener('mousemove', handleDragMove);
+    document.addEventListener('mouseup', handleDragEnd);
+    document.addEventListener('touchmove', handleDragMove, { passive: false });
+    document.addEventListener('touchend', handleDragEnd);
+  }
 </script>
 
 <template>
@@ -144,6 +219,7 @@
 
     <!-- Game Grid -->
     <div
+      ref="gridRef"
       class="grid gap-0.5 bg-gray-700 p-1 rounded-lg"
       :style="{
         gridTemplateColumns: `repeat(${gridSize}, ${cellSize}px)`,
@@ -168,8 +244,14 @@
       <div
         v-for="(piece, idx) in currentPieces"
         :key="`piece-${idx}-${piece.id}`"
-        :class="['p-4 rounded-lg cursor-pointer transition-all', selectedPiece === piece ? 'bg-blue-700 scale-110' : 'bg-gray-700 hover:bg-gray-600']"
+        :class="[
+          'p-4 rounded-lg cursor-grab active:cursor-grabbing transition-all touch-none',
+          selectedPiece === piece ? 'bg-blue-700 scale-110' : 'bg-gray-700 hover:bg-gray-600',
+          isDragging && draggedPiece === piece ? 'opacity-50' : '',
+        ]"
         @click="selectPiece(piece)"
+        @mousedown="(e) => handleDragStart(e, piece)"
+        @touchstart="(e) => handleDragStart(e, piece)"
       >
         <div class="flex flex-col items-center gap-2">
           <div class="text-sm font-semibold">{{ piece.name }}</div>
@@ -196,8 +278,39 @@
 
     <!-- Instructions -->
     <div v-if="!isGameOver" class="text-center text-sm text-gray-400 max-w-md">
-      <p>Select a piece and click on the grid to place it.</p>
+      <p>Click and drag pieces onto the grid to place them.</p>
       <p>Complete rows, columns, or 3x3 boxes to clear them and score points!</p>
+    </div>
+
+    <!-- Floating Piece During Drag -->
+    <div
+      v-if="isDragging && draggedPiece"
+      class="fixed pointer-events-none z-50"
+      :style="{
+        left: `${dragPosition.x}px`,
+        top: `${dragPosition.y}px`,
+        transform: 'translate(-50%, -50%)',
+      }"
+    >
+      <div class="p-4 rounded-lg bg-blue-600 bg-opacity-80 backdrop-blur-sm shadow-2xl">
+        <div
+          class="grid gap-0.5"
+          :style="{
+            gridTemplateColumns: `repeat(${draggedPiece.shape[0]?.length || 0}, 20px)`,
+            gridTemplateRows: `repeat(${draggedPiece.shape.length}, 20px)`,
+          }"
+        >
+          <div v-for="(row, r) in draggedPiece.shape" :key="`drag-row-${r}`" class="contents">
+            <div
+              v-for="(cell, c) in row"
+              :key="`drag-cell-${r}-${c}`"
+              :class="cell === 1 ? 'bg-current' : 'bg-transparent'"
+              :style="{ color: draggedPiece.color }"
+              class="rounded-sm"
+            />
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>

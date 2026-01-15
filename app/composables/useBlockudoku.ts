@@ -105,8 +105,8 @@ export function useBlockudoku() {
     // Place the piece
     grid.value = placePiece(grid.value, piece, row, col);
 
-    // Remove the piece from current pieces
-    const index = currentPieces.value.indexOf(piece);
+    // Remove the piece from current pieces (find by reference or ID)
+    const index = currentPieces.value.findIndex((p) => p === piece || p.id === piece.id);
     if (index > -1) {
       currentPieces.value = currentPieces.value.filter((_, i) => i !== index);
     }

@@ -252,6 +252,7 @@ export function getCompleteCols(grid: BlockGrid): number[] {
     let isComplete = true;
     for (let r = 0; r < grid.length; r++) {
       if (grid[r]?.[c] !== 1) {
+        isComplete = false;
         break;
       }
     }
