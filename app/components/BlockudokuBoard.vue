@@ -70,6 +70,26 @@
     return cells;
   });
 
+  // Calculate snapped position for drag preview
+  const snappedDragPosition = computed(() => {
+    if (!isDragging.value || !draggedPiece.value || !gridRef.value || !hoveredCell.value) {
+      return dragPosition.value;
+    }
+
+    const gridRect = gridRef.value.getBoundingClientRect();
+    const cellPixelSize = gridRect.width / props.gridSize;
+
+    // Calculate the top-left position of the hovered cell
+    const snapX = gridRect.left + hoveredCell.value.col * cellPixelSize;
+    const snapY = gridRect.top + hoveredCell.value.row * cellPixelSize;
+
+    // Add offset to center the piece on the cell
+    return {
+      x: snapX + dragOffset.value.x,
+      y: snapY + dragOffset.value.y,
+    };
+  });
+
   function selectPiece(piece: Piece) {
     selectedPiece.value = piece;
     removeMode.value = false;
@@ -304,10 +324,10 @@
     <!-- Floating Piece During Drag -->
     <div
       v-if="isDragging && draggedPiece"
-      class="fixed pointer-events-none z-50"
+      class="fixed pointer-events-none z-50 transition-all duration-75"
       :style="{
-        left: `${dragPosition.x - dragOffset.x}px`,
-        top: `${dragPosition.y - dragOffset.y}px`,
+        left: `${snappedDragPosition.x - dragOffset.x}px`,
+        top: `${snappedDragPosition.y - dragOffset.y}px`,
       }"
     >
       <div
