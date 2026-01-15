@@ -1,0 +1,445 @@
+@import 'tailwindcss';
+
+/* Base styles */
+:root {
+  /* Default theme - High Contrast */
+  /* Surface colors */
+  --color-surface-bg: #0a0a0a;
+  --color-surface-bg-gradient-start: #0f172a;
+  --color-surface-bg-gradient-mid: #1e293b;
+  --color-surface-bg-gradient-end: #0f172a;
+  --color-html-bg: #0a0a0a;
+  --color-body-bg: #0a0a0a;
+
+  /* Primary UI */
+  --color-primary-color: #3b82f6;
+  --color-primary-hover: #2563eb;
+  --color-primary-active: #1d4ed8;
+
+  /* Secondary UI */
+  --color-secondary-color: #0ea5e9;
+  --color-secondary-hover: #0284c7;
+  --color-secondary-active: #0369a1;
+
+  /* Text colors */
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #d1d5db;
+  --color-text-muted: #9ca3af;
+
+  /* Buttons */
+  --color-btn-primary-bg: #3b82f6;
+  --color-btn-primary-hover: #2563eb;
+  --color-btn-primary-text: #ffffff;
+  --color-btn-secondary-bg: #1f2937;
+  --color-btn-secondary-hover: #374151;
+  --color-btn-secondary-text: #f3f4f6;
+  --color-btn-secondary-border: #4b5563;
+  --color-btn-destructive-bg: #dc2626;
+  --color-btn-destructive-hover: #b91c1c;
+  --color-btn-destructive-text: #ffffff;
+  --color-btn-destructive-border: #dc2626;
+
+  /* Input fields */
+  --color-input-bg: #111827;
+  --color-input-border: #4b5563;
+  --color-input-text: #f3f4f6;
+  --color-input-placeholder: #6b7280;
+  --color-input-focus-ring: #3b82f6;
+
+  /* Glass panels */
+  --color-glass-bg: rgba(15, 23, 42, 0.9);
+  --color-glass-border: rgba(107, 114, 128, 0.5);
+  --color-glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+
+  /* Utilities */
+  --color-border-primary: #4b5563;
+  --color-scrollbar-thumb: #6b7280;
+  --color-scrollbar-thumb-hover: #9ca3af;
+  --color-scrollbar-track: #1f2937;
+  --color-tab-inactive-text: #9ca3af;
+  --color-tab-inactive-bg: rgba(31, 41, 55, 0.5);
+  --color-section-heading: #e5e7eb;
+
+  /* blockupelago grid */
+  --color-grid-line-thin: rgba(255, 255, 255, 0.1);
+  --color-grid-line-thick: rgba(255, 255, 255, 0.45);
+  --color-grid-cell-filled: #1f2937;
+  --color-grid-cell-hover: rgba(107, 114, 128, 0.2);
+  --color-grid-cell-selected: rgba(75, 85, 99, 0.3);
+  --color-grid-clue-text: #fff;
+  --color-grid-clue-text-complete: #6b7280;
+  --color-grid-mistake-bg: rgba(239, 68, 68, 0.5);
+  --color-grid-x-mark: #9ca3af;
+  --color-grid-x-mark-wrong: #ef4444;
+  --color-grid-x-mark-auto: #6b7280;
+
+  /* Legacy design tokens for consistent theming */
+  --color-primary: #525252;
+  --color-primary-legacy-hover: #404040;
+  --color-surface: #0f172a;
+  --color-surface-lighter: #1e293b;
+  --color-surface-border: #334155;
+  --color-glass-border-legacy: rgba(255, 255, 255, 0.1);
+  --color-glass-shadow-legacy: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Prevent white flash during load */
+html {
+  background-color: var(--color-html-bg);
+}
+
+/* App background with subtle gradient */
+body {
+  background: var(--color-body-bg);
+  background: linear-gradient(
+    135deg,
+    var(--color-surface-bg-gradient-start) 0%,
+    var(--color-surface-bg-gradient-mid) 50%,
+    var(--color-surface-bg-gradient-end) 100%
+  );
+  background-attachment: fixed;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+/* Component styles */
+.glass-panel {
+  @apply border backdrop-blur-sm;
+  background-color: var(--color-glass-bg);
+  border-color: var(--color-glass-border);
+  box-shadow: var(--color-glass-shadow);
+}
+
+.btn-primary {
+  @apply px-4 py-2 font-medium rounded-lg transition-all duration-200;
+  @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  @apply active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+  background-color: var(--color-btn-primary-bg);
+  color: var(--color-btn-primary-text);
+  --tw-ring-color: var(--color-primary-color);
+  --tw-ring-offset-color: var(--color-body-bg);
+}
+
+.btn-primary:hover {
+  background-color: var(--color-btn-primary-hover);
+}
+
+.btn-secondary {
+  @apply px-4 py-2 font-medium rounded-lg transition-all duration-200 border;
+  @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  @apply active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+  background-color: var(--color-btn-secondary-bg);
+  color: var(--color-btn-secondary-text);
+  border-color: var(--color-btn-secondary-border);
+  --tw-ring-color: var(--color-primary-color);
+  --tw-ring-offset-color: var(--color-body-bg);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-btn-secondary-hover);
+}
+
+.btn-destructive {
+  @apply px-4 py-2 font-medium rounded-lg transition-all duration-200 border;
+  @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  @apply active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none;
+  background-color: var(--color-btn-destructive-bg);
+  color: var(--color-btn-destructive-text);
+  border-color: var(--color-btn-destructive-border);
+  --tw-ring-color: var(--color-secondary-color);
+  --tw-ring-offset-color: var(--color-body-bg);
+}
+
+.btn-destructive:hover {
+  background-color: var(--color-btn-destructive-hover);
+}
+
+.input-field {
+  @apply w-full rounded-lg px-3 py-2;
+  @apply text-sm;
+  @apply focus:outline-none focus:ring-2 focus:border-transparent;
+  @apply transition-all duration-200;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  background-color: var(--color-input-bg);
+  border: 1px solid var(--color-input-border);
+  color: var(--color-input-text);
+  --tw-ring-color: var(--color-input-focus-ring);
+  --tw-ring-offset-color: var(--color-body-bg);
+}
+
+.input-field::placeholder {
+  color: var(--color-input-placeholder);
+}
+
+.checkbox-field {
+  @apply h-4 w-4 rounded transition-colors duration-200;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+  background-color: var(--color-input-bg);
+  border-color: var(--color-border-primary);
+  --tw-ring-color: var(--color-input-focus-ring);
+  accent-color: var(--color-primary-color);
+}
+
+.tab-button {
+  @apply flex-1 px-3 py-2 text-xs font-medium transition-all duration-200;
+}
+
+.tab-button:hover {
+  background-color: var(--color-tab-inactive-bg);
+}
+
+.tab-button.active {
+  background-color: var(--color-input-bg);
+  color: var(--color-text-primary);
+  box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+}
+
+.tab-button:not(.active) {
+  color: var(--color-tab-inactive-text);
+}
+
+.section-heading {
+  @apply text-xs font-semibold uppercase tracking-wider mb-3;
+  color: var(--color-section-heading);
+}
+
+.status-indicator {
+  @apply inline-flex items-center gap-2 text-xs;
+}
+
+.status-dot {
+  @apply inline-flex h-2.5 w-2.5 rounded-full;
+}
+
+/* Enhanced range slider styles */
+.slider {
+  @apply appearance-none bg-transparent cursor-pointer;
+}
+
+.slider::-webkit-slider-track {
+  background-color: var(--color-border-primary);
+  @apply rounded-lg h-2 border-none;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.slider::-webkit-slider-thumb {
+  @apply appearance-none h-5 w-5 rounded-full cursor-pointer;
+  background: linear-gradient(135deg, var(--color-primary-color), var(--color-primary-hover));
+  border: 2px solid var(--color-body-bg);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: -6px;
+}
+
+.slider::-webkit-slider-thumb:hover {
+  background: linear-gradient(135deg, var(--color-primary-hover), var(--color-primary-active));
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.slider::-webkit-slider-thumb:active {
+  transform: scale(1.05);
+}
+
+.slider::-moz-range-track {
+  background-color: var(--color-border-primary);
+  @apply rounded-lg h-2 border-none;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.slider::-moz-range-thumb {
+  @apply h-5 w-5 rounded-full cursor-pointer border-none;
+  background: linear-gradient(135deg, var(--color-primary-color), var(--color-primary-hover));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.slider::-moz-range-thumb:hover {
+  background: linear-gradient(135deg, var(--color-primary-hover), var(--color-primary-active));
+  transform: scale(1.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.slider:disabled {
+  @apply cursor-not-allowed opacity-50;
+}
+
+.slider:disabled::-webkit-slider-thumb {
+  @apply cursor-not-allowed;
+  background: var(--color-text-muted);
+  box-shadow: none;
+  transform: none;
+}
+
+.slider:disabled::-moz-range-thumb {
+  @apply cursor-not-allowed;
+  background: var(--color-text-muted);
+  box-shadow: none;
+  transform: none;
+}
+
+/* Touch action utilities */
+.touch-pan-x {
+  touch-action: pan-x;
+}
+
+.touch-pan-y {
+  touch-action: pan-y;
+}
+
+.touch-none {
+  touch-action: none;
+}
+
+/* Grid scroll container - for desktop only */
+.grid-scroll-container {
+  overflow: auto;
+  scrollbar-width: auto;
+  scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track);
+}
+
+.grid-scroll-container::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.grid-scroll-container::-webkit-scrollbar-track {
+  background: var(--color-scrollbar-track);
+  border-radius: 6px;
+}
+
+.grid-scroll-container::-webkit-scrollbar-thumb {
+  background: var(--color-scrollbar-thumb);
+  border-radius: 6px;
+  border: 2px solid var(--color-scrollbar-track);
+}
+
+.grid-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: var(--color-scrollbar-thumb-hover);
+}
+
+.grid-scroll-container::-webkit-scrollbar-corner {
+  background: var(--color-scrollbar-track);
+}
+
+/* Success/celebration styles */
+.celebration-glow {
+  animation: celebration-pulse 2s ease-in-out;
+}
+
+@keyframes celebration-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 20px rgba(34, 197, 94, 0);
+  }
+}
+
+/* Loading and transition states */
+.loading-shimmer {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    transform: tranneutralX(-100%);
+  }
+  100% {
+    transform: tranneutralX(100%);
+  }
+}
+
+/* Scrollbar styling */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background-color: var(--color-scrollbar-track);
+  @apply rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--color-scrollbar-thumb);
+  @apply rounded-full;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--color-scrollbar-thumb-hover);
+}
+
+/* Smooth focus transitions */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  --tw-ring-color: var(--color-primary-color);
+  --tw-ring-offset-color: var(--color-body-bg);
+  transition: box-shadow 0.2s ease-in-out;
+}
+
+/* Message flash animation */
+@keyframes message-flash {
+  0% {
+    opacity: 0;
+    transform: translateX(10px);
+    color: #facc15;
+  }
+  20% {
+    opacity: 1;
+    transform: translateX(0);
+    color: #facc15;
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+    color: inherit;
+  }
+}
+
+.animate-message-flash {
+  animation: message-flash 1s ease-out;
+}
+
+/* blockupelago grid helpers */
+.clue-text-default {
+  color: var(--color-grid-clue-text);
+  @apply font-bold;
+}
+
+.clue-text-complete {
+  color: var(--color-grid-clue-text-complete);
+  @apply font-bold;
+}
+
+/* Mobile touch improvements */
+@media (max-width: 640px) {
+  /* Prevent double-tap zoom on buttons */
+  button {
+    touch-action: manipulation;
+  }
+
+  /* Ensure minimum touch target size */
+  .btn-primary,
+  .btn-secondary,
+  .btn-destructive {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Improve tap feedback */
+  button:active {
+    opacity: 0.8;
+  }
+}
+
+/* Prevent text selection during drag painting */
+.select-none {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+button {
+  cursor: pointer;
+}
