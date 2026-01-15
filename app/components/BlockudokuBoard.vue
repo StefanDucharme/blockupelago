@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { ref, computed } from 'vue';
+  import { ref, computed, onMounted, onUnmounted } from 'vue';
   import type { Piece, BlockGrid } from '~/utils/blockudoku';
   import { canPlacePiece } from '~/utils/blockudoku';
 
@@ -31,6 +31,7 @@
   const isDragging = ref(false);
   const draggedPiece = ref<Piece | null>(null);
   const dragPosition = ref<{ x: number; y: number }>({ x: 0, y: 0 });
+  const dragOffset = ref<{ x: number; y: number }>({ x: 0, y: 0 });
   const gridRef = ref<HTMLElement | null>(null);
 
   // Calculate cell size based on grid size
@@ -127,6 +128,15 @@
     const clientX = 'touches' in event ? event.touches[0]?.clientX ?? 0 : event.clientX;
     const clientY = 'touches' in event ? event.touches[0]?.clientY ?? 0 : event.clientY;
 
+    // Calculate offset to center of the piece shape (in grid cell units)
+    const pieceWidth = (piece.shape[0]?.length || 0) * cellSize.value;
+    const pieceHeight = piece.shape.length * cellSize.value;
+
+    dragOffset.value = {
+      x: pieceWidth / 2,
+      y: pieceHeight / 2,
+    };
+
     dragPosition.value = { x: clientX, y: clientY };
 
     // Prevent default to avoid text selection
@@ -179,13 +189,21 @@
     event.preventDefault();
   }
 
-  // Add global listeners for drag
-  if (typeof window !== 'undefined') {
+  // Add global listeners for drag on mount
+  onMounted(() => {
     document.addEventListener('mousemove', handleDragMove);
     document.addEventListener('mouseup', handleDragEnd);
     document.addEventListener('touchmove', handleDragMove, { passive: false });
     document.addEventListener('touchend', handleDragEnd);
-  }
+  });
+
+  // Clean up listeners on unmount
+  onUnmounted(() => {
+    document.removeEventListener('mousemove', handleDragMove);
+    document.removeEventListener('mouseup', handleDragEnd);
+    document.removeEventListener('touchmove', handleDragMove);
+    document.removeEventListener('touchend', handleDragEnd);
+  });
 </script>
 
 <template>
@@ -244,6 +262,7 @@
       <div
         v-for="(piece, idx) in currentPieces"
         :key="`piece-${idx}-${piece.id}`"
+        data-piece-container
         :class="[
           'p-4 rounded-lg cursor-grab active:cursor-grabbing transition-all touch-none',
           selectedPiece === piece ? 'bg-blue-700 scale-110' : 'bg-gray-700 hover:bg-gray-600',
@@ -287,28 +306,25 @@
       v-if="isDragging && draggedPiece"
       class="fixed pointer-events-none z-50"
       :style="{
-        left: `${dragPosition.x}px`,
-        top: `${dragPosition.y}px`,
-        transform: 'translate(-50%, -50%)',
+        left: `${dragPosition.x - dragOffset.x}px`,
+        top: `${dragPosition.y - dragOffset.y}px`,
       }"
     >
-      <div class="p-4 rounded-lg bg-blue-600 bg-opacity-80 backdrop-blur-sm shadow-2xl">
-        <div
-          class="grid gap-0.5"
-          :style="{
-            gridTemplateColumns: `repeat(${draggedPiece.shape[0]?.length || 0}, 20px)`,
-            gridTemplateRows: `repeat(${draggedPiece.shape.length}, 20px)`,
-          }"
-        >
-          <div v-for="(row, r) in draggedPiece.shape" :key="`drag-row-${r}`" class="contents">
-            <div
-              v-for="(cell, c) in row"
-              :key="`drag-cell-${r}-${c}`"
-              :class="cell === 1 ? 'bg-current' : 'bg-transparent'"
-              :style="{ color: draggedPiece.color }"
-              class="rounded-sm"
-            />
-          </div>
+      <div
+        class="grid gap-0.5"
+        :style="{
+          gridTemplateColumns: `repeat(${draggedPiece.shape[0]?.length || 0}, ${cellSize}px)`,
+          gridTemplateRows: `repeat(${draggedPiece.shape.length}, ${cellSize}px)`,
+        }"
+      >
+        <div v-for="(row, r) in draggedPiece.shape" :key="`drag-row-${r}`" class="contents">
+          <div
+            v-for="(cell, c) in row"
+            :key="`drag-cell-${r}-${c}`"
+            :class="cell === 1 ? 'bg-current shadow-xl border border-white/20' : 'bg-transparent'"
+            :style="{ color: draggedPiece.color }"
+            class="rounded-sm"
+          />
         </div>
       </div>
     </div>
