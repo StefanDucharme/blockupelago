@@ -324,7 +324,7 @@
     <!-- Floating Piece During Drag -->
     <div
       v-if="isDragging && draggedPiece"
-      class="fixed pointer-events-none z-50 transition-all duration-75"
+      :class="['fixed pointer-events-none z-50', hoveredCell ? 'transition-all duration-100 ease-out' : '']"
       :style="{
         left: `${snappedDragPosition.x - dragOffset.x}px`,
         top: `${snappedDragPosition.y - dragOffset.y}px`,
