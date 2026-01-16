@@ -609,6 +609,7 @@ export function useBlockudoku() {
     removeBlockUses.value = itemCounts.get(AP_ITEMS.REMOVE_BLOCK) || 0;
     holdUses.value = itemCounts.get(AP_ITEMS.HOLD_ABILITY) || 0;
     mirrorUses.value = itemCounts.get(AP_ITEMS.MIRROR_ABILITY) || 0;
+    shrinkUses.value = itemCounts.get(AP_ITEMS.SHRINK_ABILITY) || 0;
 
     // Apply score multipliers (set to total, not increment)
     const mult10Count = itemCounts.get(AP_ITEMS.SCORE_MULT_10) || 0;
@@ -625,6 +626,8 @@ export function useBlockudoku() {
       undo: undoUses.value,
       remove: removeBlockUses.value,
       hold: holdUses.value,
+      mirror: mirrorUses.value,
+      shrink: shrinkUses.value,
       multiplier: scoreMultiplier.value,
       slots: maxPieceSlots.value,
     });

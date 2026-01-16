@@ -70,6 +70,14 @@ class MirrorUsesInPool(Range):
     default = 3
 
 
+class ShrinkUsesInPool(Range):
+    """Number of Shrink Ability items in the item pool."""
+    display_name = "Shrink Abilities in Pool"
+    range_start = 1
+    range_end = 10
+    default = 3
+
+
 class ScoreMultipliersInPool(Range):
     """Number of Score Multiplier items in the item pool."""
     display_name = "Score Multipliers in Pool"
@@ -106,6 +114,7 @@ class BlockudokuOptions(PerGameCommonOptions):
     remove_blocks_in_pool: RemoveBlocksInPool
     hold_uses_in_pool: HoldUsesInPool
     mirror_uses_in_pool: MirrorUsesInPool
+    shrink_uses_in_pool: ShrinkUsesInPool
     score_multipliers_in_pool: ScoreMultipliersInPool
     goal_score: GoalScore
     death_link: DeathLink

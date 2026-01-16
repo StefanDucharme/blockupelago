@@ -23,7 +23,7 @@ class BlockudokuItem(Item):
 # Item ID ranges (must match client's useArchipelagoItems.ts):
 # Piece Types:     8000001-8000019 (19 different polyomino pieces)
 # Piece Slots:     8002001-8002002 (4th and 5th piece slots)
-# Abilities:       8003001-8003005 (Rotate, Undo, Remove Block, Hold, Mirror)
+# Abilities:       8003001-8003006 (Rotate, Undo, Remove Block, Hold, Mirror, Shrink)
 # Score Boosts:    8004001-8004003 (multipliers)
 # Event:           None (Victory)
 
@@ -64,6 +64,7 @@ item_table: Dict[str, BlockudokuItemData] = {
     "Remove Block": BlockudokuItemData(code=8003003, classification=ItemClassification.useful),
     "Hold Ability": BlockudokuItemData(code=8003004, classification=ItemClassification.useful),
     "Mirror Ability": BlockudokuItemData(code=8003005, classification=ItemClassification.useful),
+    "Shrink Ability": BlockudokuItemData(code=8003006, classification=ItemClassification.useful),
 
     # === Score Multipliers (Filler/Useful) ===
     "Score Multiplier +10%": BlockudokuItemData(code=8004001, classification=ItemClassification.filler),
@@ -84,7 +85,7 @@ item_groups: Dict[str, Set[str]] = {
         "3x3 Corner", "3x3 T-Shape", "3x3 Cross",
     },
     "Abilities": {
-        "Rotate Ability", "Undo Ability", "Remove Block", "Hold Ability", "Mirror Ability",
+        "Rotate Ability", "Undo Ability", "Remove Block", "Hold Ability", "Mirror Ability", "Shrink Ability",
         "4th Piece Slot", "5th Piece Slot",
     },
     "Score Boosts": {

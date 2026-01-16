@@ -107,6 +107,9 @@ class BlockudokuWorld(World):
         for _ in range(self.options.mirror_uses_in_pool.value):
             self.multiworld.itempool.append(self.create_item("Mirror Ability"))
             item_count += 1
+        for _ in range(self.options.shrink_uses_in_pool.value):
+            self.multiworld.itempool.append(self.create_item("Shrink Ability"))
+            item_count += 1
 
         # Calculate how many locations we have (excluding Victory event)
         location_count = len([loc for loc in location_table.values() if loc.code is not None])

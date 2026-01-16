@@ -34,7 +34,8 @@ Place polyomino pieces onto a grid to clear rows, columns, and 3x3 boxes. Reach 
   - Undo Ability: Undo your last move
   - Remove Block: Remove a single block from the grid
   - Mirror Ability: Flip pieces horizontally before placing
-  - Hold Ability: Swap a piece to hold for later use
+  - Hold Ability: Drag a piece to hold for later use (costs gems)
+  - Shrink Ability: Shrink any piece into a single block
 - **Score Multipliers**: Permanent score boosts (+10%, +25%, +50%)
 
 ### Locations (Checks)
