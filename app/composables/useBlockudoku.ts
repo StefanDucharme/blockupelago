@@ -613,8 +613,8 @@ export function useBlockudoku() {
     const temp = heldPiece.value;
     heldPiece.value = piece;
 
-    // Remove piece from current pieces
-    const index = currentPieces.value.findIndex((p) => p === piece || p.id === piece.id);
+    // Remove piece from current pieces (by exact reference)
+    const index = currentPieces.value.findIndex((p) => p === piece);
     if (index > -1) {
       currentPieces.value = currentPieces.value.filter((_, i) => i !== index);
     }
@@ -622,6 +622,11 @@ export function useBlockudoku() {
     // If there was a held piece, add it back to current pieces
     if (temp) {
       currentPieces.value = [...currentPieces.value, temp];
+    }
+
+    // Generate new pieces if all pieces are gone (after swap)
+    if (currentPieces.value.length === 0) {
+      generateNewPieces();
     }
 
     return true;
