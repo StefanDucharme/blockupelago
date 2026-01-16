@@ -170,13 +170,19 @@ export function useBlockudoku() {
     }
     let pieces = generatePieces(availablePieces.value, maxPieceSlots.value);
 
-    // Apply random rotation to each piece
+    // Apply random rotation and mirror to each piece
     pieces = pieces.map((piece) => {
       const rotations = Math.floor(Math.random() * 4); // 0-3 rotations
       let rotatedPiece = piece;
       for (let i = 0; i < rotations; i++) {
         rotatedPiece = applyRotation(rotatedPiece);
       }
+
+      // Random 50% chance to mirror the piece
+      if (Math.random() < 0.5) {
+        rotatedPiece = applyMirror(rotatedPiece);
+      }
+
       return rotatedPiece;
     });
 
