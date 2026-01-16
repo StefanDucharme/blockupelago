@@ -16,7 +16,7 @@
   // Initialize Sleekplan
   if (typeof window !== 'undefined') {
     window.$sleek = [];
-    window.SLEEK_PRODUCT_ID = 235244264;
+    window.SLEEK_PRODUCT_ID = 165946020;
   }
 
   // Initialize theme from localStorage

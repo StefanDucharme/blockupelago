@@ -1211,8 +1211,17 @@
             <span :class="statusMeta.text" class="font-semibold text-xs sm:text-sm">{{ statusMeta.label }}</span>
           </div>
           <div class="text-xs text-white/70 hidden lg:block truncate">Click and drag pieces onto the grid</div>
+          <div>
+            <button
+              type="button"
+              data-sleek
+              class="px-3 py-1.5 rounded text-xs transition-colors bg-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/30"
+            >
+              Give Feedback
+            </button>
+          </div>
           <div v-if="lastMessage" class="text-xs text-neutral-400 truncate ml-auto">{{ lastMessage }}</div>
-          <div class="text-xs text-neutral-400 truncate ml-auto">v0.1.1</div>
+          <div class="text-xs text-neutral-400 truncate ml-auto">v0.1.2</div>
         </div>
       </div>
     </footer>
