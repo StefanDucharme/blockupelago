@@ -184,6 +184,17 @@ export const ALL_PIECES: Piece[] = [
 // These should NOT be included in the Archipelago item pool
 export const STARTER_PIECE_IDS = ['tromino_l', 'tetromino_t', 'tetromino_l'];
 
+// Get the size (number of blocks) in a piece
+export function getPieceSize(piece: Piece): number {
+  let count = 0;
+  for (const row of piece.shape) {
+    for (const cell of row) {
+      if (cell === 1) count++;
+    }
+  }
+  return count;
+}
+
 // Create an empty BlockGrid
 export function makeGrid(rows: number, cols: number): BlockGrid {
   return Array(rows)
@@ -426,11 +437,50 @@ export function getRandomPiece(availablePieces: Piece[]): Piece {
   return piece;
 }
 
+// Get a weighted random piece based on size ratio
+// sizeRatio: 0 = prefer small pieces, 1 = prefer large pieces, 0.5 = balanced
+export function getWeightedRandomPiece(availablePieces: Piece[], sizeRatio: number = 0.5): Piece {
+  if (availablePieces.length === 0) throw new Error('No pieces available');
+
+  // Calculate weights for each piece based on size
+  const weights = availablePieces.map((piece) => {
+    const size = getPieceSize(piece);
+    // Sizes range from 1-5 typically, normalize to 0-1
+    const normalizedSize = (size - 1) / 4; // Assuming max size is 5
+
+    // Weight calculation: closer to sizeRatio means higher weight
+    // If sizeRatio is 0 (small preferred), small pieces get higher weights
+    // If sizeRatio is 1 (large preferred), large pieces get higher weights
+    const distance = Math.abs(normalizedSize - sizeRatio);
+    const weight = 1 - distance; // Convert distance to weight (closer = higher weight)
+
+    return Math.max(0.1, weight); // Minimum weight to ensure all pieces have some chance
+  });
+
+  // Weighted random selection
+  const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+  let random = Math.random() * totalWeight;
+
+  for (let i = 0; i < availablePieces.length; i++) {
+    random -= weights[i]!;
+    if (random <= 0) {
+      return availablePieces[i]!;
+    }
+  }
+
+  // Fallback (shouldn't reach here)
+  return availablePieces[availablePieces.length - 1]!;
+}
+
 // Generate a set of random pieces
-export function generatePieces(availablePieces: Piece[], count: number): Piece[] {
+export function generatePieces(availablePieces: Piece[], count: number, sizeRatio?: number): Piece[] {
   const pieces: Piece[] = [];
   for (let i = 0; i < count; i++) {
-    pieces.push(getRandomPiece(availablePieces));
+    if (sizeRatio !== undefined) {
+      pieces.push(getWeightedRandomPiece(availablePieces, sizeRatio));
+    } else {
+      pieces.push(getRandomPiece(availablePieces));
+    }
   }
   return pieces;
 }

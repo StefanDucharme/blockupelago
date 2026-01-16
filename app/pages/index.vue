@@ -66,6 +66,8 @@
     gameMode,
     maxPieceSlots,
     unlockedPieceIds,
+    pieceSizeRatio,
+    disabledShapeIds,
     initGame,
     resetStats,
     resetAllProgress,
@@ -382,6 +384,22 @@
   function handleGridSizeChange(size: number) {
     if (size !== gridSize.value && confirm('Changing grid size will start a new game. Continue?')) {
       setGridSize(size);
+    }
+  }
+
+  // Toggle a shape on/off in free-play mode
+  function toggleShape(shapeId: string) {
+    const index = disabledShapeIds.value.indexOf(shapeId);
+    if (index > -1) {
+      // Enable the shape
+      disabledShapeIds.value = disabledShapeIds.value.filter((id) => id !== shapeId);
+    } else {
+      // Disable the shape (but ensure at least 3 shapes remain enabled)
+      if (ALL_PIECES.length - disabledShapeIds.value.length > 3) {
+        disabledShapeIds.value = [...disabledShapeIds.value, shapeId];
+      } else {
+        alert('You must keep at least 3 shapes enabled!');
+      }
     }
   }
 
@@ -1057,6 +1075,70 @@
                   <span :class="gameMode === 'free-play' ? 'text-pink-400' : mirrorUses > 0 ? 'text-green-400' : 'text-neutral-500'">
                     {{ gameMode === 'free-play' ? '1 gem' : mirrorUses }}
                   </span>
+                </div>
+              </div>
+            </section>
+
+            <section class="space-y-4">
+              <h3 class="section-heading">Piece Generation Settings</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4 space-y-4">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-neutral-300">Piece Size Preference</span>
+                    <span class="text-xs text-blue-400 font-mono">{{ pieceSizeRatio.toFixed(2) }}</span>
+                  </div>
+                  <input
+                    type="range"
+                    v-model.number="pieceSizeRatio"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                  <div class="flex justify-between text-2xs text-neutral-500 mt-1">
+                    <span>Small (1-2 blocks)</span>
+                    <span>Balanced</span>
+                    <span>Large (4-5 blocks)</span>
+                  </div>
+                  <p class="text-2xs text-neutral-400 mt-2">Controls the probability of generating smaller vs larger pieces when restocking.</p>
+                </div>
+              </div>
+            </section>
+
+            <section v-if="gameMode === 'free-play'" class="space-y-4">
+              <h3 class="section-heading">Enabled Shapes ({{ ALL_PIECES.length - disabledShapeIds.length }} / {{ ALL_PIECES.length }})</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4">
+                <p class="text-xs text-neutral-400 mb-3">Toggle shapes on/off for piece generation</p>
+                <div class="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto">
+                  <button
+                    v-for="piece in ALL_PIECES"
+                    :key="piece.id"
+                    @click="toggleShape(piece.id)"
+                    :class="[
+                      'text-left p-2 rounded transition-all border',
+                      disabledShapeIds.includes(piece.id)
+                        ? 'bg-neutral-900/30 border-neutral-800 opacity-50'
+                        : 'bg-neutral-900/50 border-neutral-700 hover:border-blue-500',
+                    ]"
+                  >
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs text-neutral-300">{{ piece.name }}</span>
+                      <span v-if="!disabledShapeIds.includes(piece.id)" class="text-green-400 text-xs">✓</span>
+                      <span v-else class="text-neutral-600 text-xs">✗</span>
+                    </div>
+                    <div class="flex items-center justify-center">
+                      <div class="inline-grid gap-0.5">
+                        <div v-for="(row, i) in piece.shape" :key="i" class="flex gap-0.5">
+                          <div
+                            v-for="(cell, j) in row"
+                            :key="j"
+                            :style="{ backgroundColor: cell ? piece.color : 'transparent' }"
+                            class="w-3 h-3 rounded-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </button>
                 </div>
               </div>
             </section>

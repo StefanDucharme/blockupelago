@@ -66,6 +66,10 @@ export function useBlockudoku() {
     unlockedPieceIds.value = [...STARTER_PIECE_IDS];
   }
 
+  // Free-play settings
+  const pieceSizeRatio = usePersistentRef('blockudoku_piece_size_ratio', 0.5); // 0 = all small, 1 = all large, 0.5 = balanced
+  const disabledShapeIds = usePersistentRef<string[]>('blockudoku_disabled_shapes', []); // IDs of shapes to exclude in free-play
+
   // Abilities
   const rotateUses = usePersistentRef('blockudoku_rotate_uses', 0);
   const undoUses = usePersistentRef('blockudoku_undo_uses', 0);
@@ -88,9 +92,9 @@ export function useBlockudoku() {
 
   // Available pieces based on what's unlocked
   const availablePieces = computed(() => {
-    // In free-play mode, all pieces are available
+    // In free-play mode, all pieces are available (minus disabled ones)
     if (gameMode.value === 'free-play') {
-      return ALL_PIECES;
+      return ALL_PIECES.filter((p) => !disabledShapeIds.value.includes(p.id));
     }
     // In archipelago mode, only unlocked pieces are available
     return ALL_PIECES.filter((p) => unlockedPieceIds.value.includes(p.id));
@@ -168,7 +172,8 @@ export function useBlockudoku() {
       console.error('No pieces unlocked!');
       return;
     }
-    let pieces = generatePieces(availablePieces.value, maxPieceSlots.value);
+    // Use size ratio for weighted piece selection
+    let pieces = generatePieces(availablePieces.value, maxPieceSlots.value, pieceSizeRatio.value);
 
     // Apply random rotation and mirror to each piece
     pieces = pieces.map((piece) => {
@@ -811,6 +816,10 @@ export function useBlockudoku() {
     scoreMultiplier,
     baseMultiplier,
     maxPieceSlots,
+
+    // Free-play settings
+    pieceSizeRatio,
+    disabledShapeIds,
 
     // Actions
     initGame,
