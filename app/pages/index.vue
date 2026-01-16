@@ -68,6 +68,7 @@
     unlockedPieceIds,
     pieceSizeRatio,
     disabledShapeIds,
+    gemSpawnRatio,
     freeRotate,
     freeUndo,
     freeRemove,
@@ -1180,6 +1181,26 @@
                     <span>Large (4-5 blocks)</span>
                   </div>
                   <p class="text-2xs text-neutral-400 mt-2">Controls the probability of generating smaller vs larger pieces when restocking.</p>
+                </div>
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-neutral-300">Gem Spawn Chance</span>
+                    <span class="text-xs text-pink-400 font-mono">{{ (gemSpawnRatio * 100).toFixed(0) }}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    v-model.number="gemSpawnRatio"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer slider"
+                  />
+                  <div class="flex justify-between text-2xs text-neutral-500 mt-1">
+                    <span>Never</span>
+                    <span>Sometimes</span>
+                    <span>Always</span>
+                  </div>
+                  <p class="text-2xs text-neutral-400 mt-2">Probability that a gem will spawn on the grid when new pieces are generated.</p>
                 </div>
               </div>
             </section>

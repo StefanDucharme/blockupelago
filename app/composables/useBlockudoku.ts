@@ -48,7 +48,7 @@ export function useBlockudoku() {
 
   // Gem cells (Archipelago checks)
   const gemCells = ref<{ row: number; col: number; checkId: number }[]>([]);
-  const gemSpawnChance = 0.3; // 30% chance to spawn a gem on piece restock
+  const gemSpawnRatio = usePersistentRef('blockudoku_gem_spawn_ratio', 0.3); // Probability to spawn a gem on piece restock (0-1)
   const nextGemCheckId = ref(10000000); // Starting ID for gem checks
 
   // Statistics for Archipelago checks
@@ -201,7 +201,7 @@ export function useBlockudoku() {
     currentPieces.value = pieces;
 
     // Random chance to spawn a gem on the grid
-    if (Math.random() < gemSpawnChance) {
+    if (Math.random() < gemSpawnRatio.value) {
       spawnGem();
     }
   }
@@ -878,6 +878,7 @@ export function useBlockudoku() {
     // Free-play settings
     pieceSizeRatio,
     disabledShapeIds,
+    gemSpawnRatio,
     freeRotate,
     freeUndo,
     freeRemove,
