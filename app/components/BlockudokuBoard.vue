@@ -546,7 +546,7 @@
               canRotatePiece(piece) ? 'bg-blue-600/50 hover:bg-blue-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
             ]"
           >
-            🔃 ({{ rotateDisplayText }})
+            🔃<template v-if="!piece.hasBeenRotated"> ({{ rotateDisplayText }})</template>
           </button>
           <button
             @click="emit('mirror-piece', piece)"
@@ -556,7 +556,7 @@
               canMirrorPiece(piece) ? 'bg-cyan-600/50 hover:bg-cyan-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
             ]"
           >
-            <span class="text-cyan-300">↔️</span> ({{ mirrorDisplayText }})
+            <span class="text-cyan-300">↔️</span><template v-if="!piece.hasBeenMirrored"> ({{ mirrorDisplayText }})</template>
           </button>
           <button
             @click="emit('hold-piece', piece)"
