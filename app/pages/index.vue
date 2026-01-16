@@ -8,10 +8,22 @@
   import { ALL_PIECES } from '~/utils/blockudoku';
 
   // Tab management
-  type MobileTab = 'game' | 'archipelago' | 'settings' | 'shop' | 'debug';
-  type RightTab = 'archipelago' | 'settings' | 'shop' | 'debug';
+  type MobileTab = 'game' | 'archipelago' | 'chat' | 'settings' | 'shop' | 'debug';
+  type RightTab = 'archipelago' | 'chat' | 'settings' | 'shop' | 'debug';
   const activeTab = ref<RightTab>('archipelago');
   const activeMobileTab = ref<MobileTab>('game');
+
+  // Archipelago message log
+  const messageLog = ref<Array<{ type: 'sent' | 'received' | 'system'; text: string; timestamp: Date }>>([]);
+
+  // Add message to log
+  function addLogMessage(type: 'sent' | 'received' | 'system', text: string) {
+    messageLog.value.push({ type, text, timestamp: new Date() });
+    // Keep only last 100 messages
+    if (messageLog.value.length > 100) {
+      messageLog.value.shift();
+    }
+  }
 
   // Track if we're on mobile
   const isMobile = ref(false);
@@ -78,10 +90,29 @@
     addPieceSlot,
   } = useBlockudoku();
 
-  const { archipelagoMode, checkLocation, AP_ITEMS, ITEM_NAME_TO_ID } = useArchipelagoItems();
+  const { archipelagoMode, checkLocation, AP_ITEMS, ITEM_NAME_TO_ID, getItemName } = useArchipelagoItems();
 
-  const { host, port, slot, password, useSecureConnection, status, connect, disconnect, items, lastMessage, checkLocations, checkGoalCompletion } =
-    useArchipelago();
+  const {
+    host,
+    port,
+    slot,
+    password,
+    useSecureConnection,
+    status,
+    connect,
+    disconnect,
+    autoReconnect,
+    syncItems,
+    items,
+    lastMessage,
+    checkLocations,
+    checkGoalCompletion,
+  } = useArchipelago();
+
+  // Auto-reconnect on page load if previously connected
+  onMounted(() => {
+    autoReconnect();
+  });
 
   // Status indicator
   const statusMeta = computed(() => {
@@ -210,6 +241,114 @@
     { deep: true },
   );
 
+  // Debug: selected item for giving
+  const debugSelectedItem = ref<number | ''>('');
+
+  // Debug: Give an AP item
+  function giveDebugItem() {
+    if (!debugSelectedItem.value) return;
+    const itemId = debugSelectedItem.value as number;
+    const itemName = getItemName(itemId);
+
+    // Simulate receiving the item
+    items.receiveItem(itemId);
+    addLogMessage('system', `Debug: Gave ${itemName}`);
+
+    // Manually trigger the item handling logic
+    switch (itemId) {
+      // Pieces
+      case AP_ITEMS.SINGLE_BLOCK:
+        unlockPiece('single');
+        break;
+      case AP_ITEMS.DOMINO_I:
+        unlockPiece('domino_i');
+        break;
+      case AP_ITEMS.TROMINO_I:
+        unlockPiece('tromino_i');
+        break;
+      case AP_ITEMS.TROMINO_L:
+        unlockPiece('tromino_l');
+        break;
+      case AP_ITEMS.TETROMINO_I:
+        unlockPiece('tetromino_i');
+        break;
+      case AP_ITEMS.TETROMINO_O:
+        unlockPiece('tetromino_o');
+        break;
+      case AP_ITEMS.TETROMINO_T:
+        unlockPiece('tetromino_t');
+        break;
+      case AP_ITEMS.TETROMINO_L:
+        unlockPiece('tetromino_l');
+        break;
+      case AP_ITEMS.TETROMINO_S:
+        unlockPiece('tetromino_s');
+        break;
+      case AP_ITEMS.PENTOMINO_I:
+        unlockPiece('pentomino_i');
+        break;
+      case AP_ITEMS.PENTOMINO_L:
+        unlockPiece('pentomino_l');
+        break;
+      case AP_ITEMS.PENTOMINO_P:
+        unlockPiece('pentomino_p');
+        break;
+      case AP_ITEMS.PENTOMINO_U:
+        unlockPiece('pentomino_u');
+        break;
+      case AP_ITEMS.PENTOMINO_W:
+        unlockPiece('pentomino_w');
+        break;
+      case AP_ITEMS.PENTOMINO_PLUS:
+        unlockPiece('pentomino_plus');
+        break;
+      case AP_ITEMS.BLOCK_3X3:
+        unlockPiece('block_3x3');
+        break;
+      case AP_ITEMS.CORNER_3X3:
+        unlockPiece('corner_3x3');
+        break;
+      case AP_ITEMS.T_SHAPE_3X3:
+        unlockPiece('t_shape_3x3');
+        break;
+      case AP_ITEMS.CROSS_3X3:
+        unlockPiece('cross_3x3');
+        break;
+      // Slots
+      case AP_ITEMS.PIECE_SLOT_4:
+        addPieceSlot();
+        break;
+      case AP_ITEMS.PIECE_SLOT_5:
+        addPieceSlot();
+        break;
+      // Abilities
+      case AP_ITEMS.ROTATE_ABILITY:
+        addRotateAbility();
+        break;
+      case AP_ITEMS.UNDO_ABILITY:
+        addUndoAbility();
+        break;
+      case AP_ITEMS.REMOVE_BLOCK:
+        addRemoveBlock();
+        break;
+      case AP_ITEMS.HOLD_ABILITY:
+        addHoldAbility();
+        break;
+      // Score multipliers
+      case AP_ITEMS.SCORE_MULT_10:
+        addScoreMultiplier(0.1);
+        break;
+      case AP_ITEMS.SCORE_MULT_25:
+        addScoreMultiplier(0.25);
+        break;
+      case AP_ITEMS.SCORE_MULT_50:
+        addScoreMultiplier(0.5);
+        break;
+    }
+
+    debugSelectedItem.value = '';
+  }
+
   // Helper function to handle grid size change with confirmation
   function handleGridSizeChange(size: number) {
     if (size !== gridSize.value && confirm('Changing grid size will start a new game. Continue?')) {
@@ -225,7 +364,7 @@
       return;
     }
 
-    // Confirm mode change if it will reset progress
+    // Always start a new game when switching modes
     if (newMode !== gameMode.value) {
       const modeNames = {
         'free-play': 'Free Play',
@@ -248,15 +387,26 @@
     }
   }
 
-  // Watch archipelago mode changes to enable archipelago game mode when connected
-  watch(archipelagoMode, (isArchipelago) => {
-    if (isArchipelago && gameMode.value !== 'archipelago' && status.value === 'connected') {
-      // User connected to AP, suggest switching to archipelago mode
-      if (confirm('Connected to Archipelago! Switch to Archipelago mode? This will start a new game.')) {
-        gameMode.value = 'archipelago';
-        resetStats();
-        initGame();
-      }
+  // Watch for connection to Archipelago and auto-switch to archipelago mode
+  watch(status, (newStatus, oldStatus) => {
+    if (newStatus === 'connected' && gameMode.value !== 'archipelago') {
+      // Auto-switch to archipelago mode on connection
+      gameMode.value = 'archipelago';
+      archipelagoMode.value = true;
+      resetStats();
+      initGame();
+      addLogMessage('system', 'Connected to Archipelago server');
+    } else if (newStatus === 'connected' && oldStatus !== 'connected') {
+      addLogMessage('system', 'Connected to Archipelago server');
+    } else if (newStatus === 'disconnected' && oldStatus === 'connected') {
+      addLogMessage('system', 'Disconnected from Archipelago server');
+    }
+  });
+
+  // Watch for archipelago messages
+  watch(lastMessage, (newMsg, oldMsg) => {
+    if (newMsg && newMsg !== oldMsg) {
+      addLogMessage('received', newMsg);
     }
   });
 
@@ -276,6 +426,7 @@
     // Send all new checks to AP server
     if (newChecks.length > 0) {
       console.log('[AP] Sending checks:', newChecks);
+      addLogMessage('sent', `Sent ${newChecks.length} location check(s)`);
       checkLocations(newChecks);
     }
 
@@ -290,6 +441,7 @@
     const gemChecks = getCollectedGemChecks();
     if (gemChecks.length > 0) {
       console.log('[AP] Sending gem checks:', gemChecks);
+      addLogMessage('sent', `Collected ${gemChecks.length} gem(s)`);
       checkLocations(gemChecks);
     }
   });
@@ -316,6 +468,14 @@
       </button>
       <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'archipelago' }" @click="activeMobileTab = 'archipelago'">
         <span class="text-xs">🏝️</span>
+      </button>
+      <button
+        v-if="gameMode === 'archipelago'"
+        class="tab-button flex-1 min-w-0 px-2"
+        :class="{ active: activeMobileTab === 'chat' }"
+        @click="activeMobileTab = 'chat'"
+      >
+        <span class="text-xs">💬</span>
       </button>
       <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'settings' }" @click="activeMobileTab = 'settings'">
         <span class="text-xs">⚙️</span>
@@ -412,6 +572,14 @@
           <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'archipelago' }" @click="activeTab = 'archipelago'">
             Archipelago
           </button>
+          <button
+            v-if="gameMode === 'archipelago'"
+            class="tab-button whitespace-nowrap"
+            :class="{ active: activeTab === 'chat' }"
+            @click="activeTab = 'chat'"
+          >
+            Chat
+          </button>
           <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'settings' }" @click="activeTab = 'settings'">Settings</button>
           <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'shop' }" @click="activeTab = 'shop'">Shop</button>
           <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'debug' }" @click="activeTab = 'debug'">Debug</button>
@@ -462,10 +630,68 @@
                 <button class="btn-secondary" @click="disconnect()" :disabled="status !== 'connected'">Disconnect</button>
               </div>
 
+              <div v-if="status === 'connected'" class="pt-2">
+                <button
+                  class="btn-secondary w-full text-xs"
+                  @click="syncItems()"
+                  title="Reprocess all items from server (use if local data was cleared)"
+                >
+                  🔄 Resync Items
+                </button>
+              </div>
+
               <div v-if="lastMessage" class="mt-4 p-3 bg-neutral-900/50 rounded-lg border border-neutral-600">
                 <div class="text-xs text-neutral-300">{{ lastMessage }}</div>
               </div>
             </div>
+          </div>
+
+          <!-- CHAT TAB -->
+          <div v-else-if="isTabVisible('chat')" class="space-y-6">
+            <div>
+              <h2 class="font-semibold text-neutral-100 mb-1">Message Log</h2>
+              <p class="text-xs text-neutral-400">Archipelago communications</p>
+            </div>
+
+            <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3 max-h-150 overflow-y-auto">
+              <div v-if="messageLog.length === 0" class="text-center text-neutral-500 py-8">No messages yet</div>
+              <div v-else class="space-y-2">
+                <div
+                  v-for="(message, index) in messageLog"
+                  :key="index"
+                  class="p-3 rounded text-sm"
+                  :class="{
+                    'bg-blue-500/10 border border-blue-500/30': message.type === 'sent',
+                    'bg-green-500/10 border border-green-500/30': message.type === 'received',
+                    'bg-neutral-700/30 border border-neutral-600/30': message.type === 'system',
+                  }"
+                >
+                  <div class="flex items-start justify-between gap-2 mb-1">
+                    <span
+                      class="text-xs font-semibold"
+                      :class="{
+                        'text-blue-400': message.type === 'sent',
+                        'text-green-400': message.type === 'received',
+                        'text-neutral-400': message.type === 'system',
+                      }"
+                    >
+                      {{ message.type === 'sent' ? '📤 Sent' : message.type === 'received' ? '📥 Received' : 'ℹ️ System' }}
+                    </span>
+                    <span class="text-2xs text-neutral-500">
+                      {{ message.timestamp.toLocaleTimeString() }}
+                    </span>
+                  </div>
+                  <div class="text-neutral-200">{{ message.text }}</div>
+                </div>
+              </div>
+            </div>
+
+            <button
+              @click="messageLog = []"
+              class="w-full px-4 py-2 bg-neutral-700/50 hover:bg-neutral-600/50 text-neutral-300 rounded text-sm transition-colors"
+            >
+              Clear Log
+            </button>
           </div>
 
           <!-- SETTINGS TAB -->
@@ -698,6 +924,24 @@
                 <button type="button" class="btn-secondary w-full text-xs" @click="spawnGem()">💎 Spawn Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addPieceSlot()">+ Piece Slot</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addScoreMultiplier(0.1)">+ 0.1x Score Multiplier</button>
+              </div>
+            </section>
+
+            <section v-if="gameMode === 'archipelago'" class="space-y-3">
+              <h3 class="section-heading">Give AP Item</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2">
+                <select
+                  v-model="debugSelectedItem"
+                  class="w-full px-3 py-2 bg-neutral-700/50 text-neutral-200 rounded text-xs border border-neutral-600"
+                >
+                  <option value="" disabled>Select an item...</option>
+                  <option v-for="(itemId, itemName) in ITEM_NAME_TO_ID" :key="itemName" :value="itemId">
+                    {{ itemName }}
+                  </option>
+                </select>
+                <button type="button" class="btn-secondary w-full text-xs" @click="giveDebugItem" :disabled="!debugSelectedItem">
+                  🎁 Give Selected Item
+                </button>
               </div>
             </section>
 

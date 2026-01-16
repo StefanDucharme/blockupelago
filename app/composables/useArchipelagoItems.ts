@@ -79,6 +79,14 @@ export const ITEM_NAME_TO_ID: Record<string, number> = {
   'Score Multiplier +50%': AP_ITEMS.SCORE_MULT_50,
 };
 
+// Reverse mapping: item ID to item name
+export const ITEM_ID_TO_NAME: Record<number, string> = Object.fromEntries(Object.entries(ITEM_NAME_TO_ID).map(([name, id]) => [id, name]));
+
+// Get item name from item ID
+export function getItemName(itemId: number): string {
+  return ITEM_ID_TO_NAME[itemId] || `Unknown Item (${itemId})`;
+}
+
 // ============================================
 // LOCATION IDS - Must match APWorld Locations.py
 // ============================================
@@ -198,6 +206,7 @@ export function useArchipelagoItems() {
   return {
     archipelagoMode,
     completedChecks,
+    getItemName,
     receivedItems,
     checkLocation,
     isLocationCompleted,

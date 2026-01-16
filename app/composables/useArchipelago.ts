@@ -31,6 +31,9 @@ export function useArchipelago() {
   // Secure connection setting (true = wss://, false = ws://)
   const useSecureConnection = useState('ap_useSecure', () => true);
 
+  // Track if we should auto-reconnect on page load
+  const shouldAutoReconnect = useState('ap_shouldAutoReconnect', () => false);
+
   // Death Link state
   const deathLinkEnabled = useState('ap_deathLink', () => false);
   const lastDeathTime = useState('ap_lastDeathTime', () => 0);
@@ -190,8 +193,17 @@ export function useArchipelago() {
       lastMessage.value = 'Connected!';
       addLogMessage(`Connected to Archipelago server as ${slot.value}!`, 'info');
 
+      // Mark that we should auto-reconnect on refresh
+      shouldAutoReconnect.value = true;
+
       // Update status to playing
       client.updateStatus(clientStatuses.playing);
+
+      // Check for items that should be received (handles initial connection and reconnection)
+      // The itemsReceived event handler will process any items we haven't seen yet
+      if (client.items.received && client.items.received.length > 0) {
+        addLogMessage(`Checking ${client.items.received.length} received items...`, 'info');
+      }
     } catch (e: any) {
       status.value = 'error';
       const errorMsg = e?.message ?? String(e);
@@ -208,6 +220,7 @@ export function useArchipelago() {
       addLogMessage('Disconnected from server.', 'info');
     } finally {
       status.value = 'disconnected';
+      shouldAutoReconnect.value = false;
       lastMessage.value = 'Disconnected.';
       // Keep Archipelago mode active after disconnect to preserve state
       // User can manually switch to free play if desired
@@ -217,8 +230,9 @@ export function useArchipelago() {
   function handleItemReceived(itemId: number): string | null {
     const result = items.receiveItem(itemId);
     if (result) {
-      lastMessage.value = `Received item: ${itemId}`;
-      return `Item ${itemId}`;
+      const itemName = items.getItemName(itemId);
+      lastMessage.value = `Received item: ${itemName}`;
+      return itemName;
     }
     return null;
   }
@@ -291,11 +305,62 @@ export function useArchipelago() {
     }
   }
 
+  // Try to auto-reconnect if we were previously connected
+  async function autoReconnect() {
+    if (import.meta.client && shouldAutoReconnect.value && status.value !== 'connected') {
+      // Check if we have valid connection settings
+      if (host.value && port.value && slot.value) {
+        addLogMessage('Attempting to reconnect...', 'info');
+        await connect();
+      }
+    }
+  }
+
   // Debug function to simulate receiving an item (for testing)
   function debugReceiveItem(itemId: number) {
     const itemName = handleItemReceived(itemId);
     if (itemName) {
       addLogMessage(`[DEBUG] Received: ${itemName}`, 'item');
+    }
+  }
+
+  // Force resync all items from server (useful if local state was cleared)
+  function syncItems() {
+    if (status.value !== 'connected') {
+      addLogMessage('Must be connected to sync items.', 'error');
+      return;
+    }
+
+    // Reset the highest processed index to force reprocessing
+    highestItemIndexProcessed = -1;
+    if (import.meta.client) {
+      localStorage.setItem('blockupelago_ap_highestItemIndex', '-1');
+    }
+
+    addLogMessage('Resyncing items from server...', 'info');
+
+    // Process all received items
+    if (client.items.received && client.items.received.length > 0) {
+      const allItems = client.items.received;
+      for (let i = 0; i < allItems.length; i++) {
+        const item = allItems[i];
+        if (!item) continue;
+
+        // Update the highest index
+        highestItemIndexProcessed = i;
+        if (import.meta.client) {
+          localStorage.setItem('blockupelago_ap_highestItemIndex', i.toString());
+        }
+
+        // Process the item
+        const itemName = handleItemReceived(item.id);
+        if (itemName) {
+          addLogMessage(`Resynced: ${itemName}`, 'item');
+        }
+      }
+      addLogMessage(`Resynced ${allItems.length} item(s).`, 'info');
+    } else {
+      addLogMessage('No items to sync.', 'info');
     }
   }
 
@@ -323,6 +388,7 @@ export function useArchipelago() {
     goalCompleted,
     connect,
     disconnect,
+    autoReconnect,
     checkLocation,
     checkLocations,
     checkPuzzleSolved,
@@ -331,6 +397,7 @@ export function useArchipelago() {
     toggleDeathLink,
     sendDeathLink,
     debugReceiveItem,
+    syncItems,
     say,
     // Expose items composable
     items,

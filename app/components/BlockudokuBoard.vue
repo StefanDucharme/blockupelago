@@ -312,7 +312,7 @@
 <template>
   <div class="flex flex-col items-center gap-4 sm:gap-6 p-2 sm:p-4">
     <!-- Score and New Game Button -->
-    <div class="flex items-center justify-between w-full max-w-4xl min-h-[40px]">
+    <div class="flex items-center justify-between w-full max-w-4xl min-h-10">
       <div class="text-xl sm:text-2xl font-bold">
         <span v-if="scoreMultiplier > 1" class="text-xs sm:text-sm text-green-400"> (×{{ scoreMultiplier.toFixed(1) }}) </span>
       </div>
@@ -329,7 +329,7 @@
     </div>
 
     <!-- Game Over Message -->
-    <div class="min-h-[24px] sm:min-h-[32px] flex items-center justify-center">
+    <div class="min-h-6 sm:min-h-8 flex items-center justify-center">
       <div v-if="isGameOver" class="text-lg sm:text-2xl font-bold text-red-500 animate-pulse">Game Over! No valid moves remaining.</div>
     </div>
 
@@ -371,7 +371,7 @@
           <div
             v-if="heldPiece"
             :class="[
-              'p-2 rounded-lg transition-all w-[80px] h-[80px] sm:w-[100px] sm:h-[100px] flex items-center justify-center cursor-grab active:cursor-grabbing',
+              'p-2 rounded-lg transition-all w-20 h-20 sm:w-25 sm:h-25 flex items-center justify-center cursor-grab active:cursor-grabbing',
               selectedPiece === heldPiece ? 'bg-blue-700 scale-110' : 'bg-gray-700/50 border-2 border-dashed border-gray-500',
               isDragging && draggedPiece === heldPiece ? 'opacity-50' : '',
             ]"
@@ -399,7 +399,7 @@
           </div>
           <div
             v-else
-            class="p-2 rounded-lg transition-all w-[80px] h-[80px] sm:w-[100px] sm:h-[100px] flex items-center justify-center bg-gray-700/50 border-2 border-dashed border-gray-500"
+            class="p-2 rounded-lg transition-all w-20 h-20 sm:w-25 sm:h-25 flex items-center justify-center bg-gray-700/50 border-2 border-dashed border-gray-500"
           >
             <div class="text-xs text-center text-neutral-500">Empty</div>
           </div>
@@ -409,7 +409,7 @@
         <button
           v-if="canUseUndo"
           @click="emit('undo')"
-          class="w-[80px] sm:w-[100px] px-2 py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-xs sm:text-sm font-medium"
+          class="w-20 sm:w-25 px-2 py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-xs sm:text-sm font-medium"
         >
           Undo<br />({{ undoDisplayText }})
         </button>
@@ -419,7 +419,7 @@
           v-if="canUseRemoveBlock"
           @click="toggleRemoveMode"
           :class="[
-            'w-[80px] sm:w-[100px] px-2 py-2 rounded text-xs sm:text-sm font-medium',
+            'w-20 sm:w-25 px-2 py-2 rounded text-xs sm:text-sm font-medium',
             removeMode ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700',
           ]"
         >
@@ -430,16 +430,11 @@
 
     <!-- Available Pieces -->
     <div class="flex gap-2 sm:gap-4 items-start justify-center flex-wrap">
-      <div
-        v-for="(piece, idx) in currentPieces"
-        :key="`piece-${idx}-${piece.id}`"
-        data-piece-container
-        class="flex flex-col gap-2 w-[100px] sm:w-[120px]"
-      >
+      <div v-for="(piece, idx) in currentPieces" :key="`piece-${idx}-${piece.id}`" data-piece-container class="flex flex-col gap-2 w-25 sm:w-30">
         <div class="flex flex-col items-center">
           <div
             :class="[
-              'p-2 sm:p-3 rounded-lg cursor-grab active:cursor-grabbing transition-all touch-none w-[100px] h-[100px] sm:w-[120px] sm:h-[120px]',
+              'p-2 sm:p-3 rounded-lg cursor-grab active:cursor-grabbing transition-all touch-none w-25 h-25 sm:w-30 sm:h-30',
               selectedPiece === piece ? 'bg-blue-700 scale-110' : 'bg-gray-700 hover:bg-gray-600',
               isDragging && draggedPiece === piece ? 'opacity-50' : '',
             ]"
@@ -468,7 +463,7 @@
             </div>
           </div>
         </div>
-        <div class="flex gap-1 sm:gap-2 h-[28px] sm:h-[32px]">
+        <div class="flex gap-1 sm:gap-2 h-7 sm:h-8">
           <button
             @click="emit('rotate-piece', piece)"
             :disabled="!canUseRotate"
