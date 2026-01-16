@@ -56,9 +56,7 @@
     heldPiece,
     rotatePiece,
     scoreMultiplier,
-    singlePlayerMode,
-    MILESTONES,
-    claimedMilestones,
+    gameMode,
     maxPieceSlots,
     unlockedPieceIds,
     initGame,
@@ -221,10 +219,46 @@
     }
   }
 
-  // Watch archipelago mode changes to disable single player mode
+  // Helper function to handle game mode change
+  function handleGameModeChange(newMode: 'free-play' | 'archipelago') {
+    // Don't allow archipelago mode if not connected
+    if (newMode === 'archipelago' && status.value !== 'connected') {
+      alert('You must be connected to an Archipelago server to use Archipelago mode.');
+      return;
+    }
+
+    // Confirm mode change if it will reset progress
+    if (newMode !== gameMode.value) {
+      const modeNames = {
+        'free-play': 'Free Play',
+        'archipelago': 'Archipelago'
+      };
+
+      if (confirm(`Switch to ${modeNames[newMode]} mode? This will start a new game and reset your progress.`)) {
+        gameMode.value = newMode;
+
+        // Sync archipelago mode flag
+        if (newMode === 'archipelago') {
+          archipelagoMode.value = true;
+        } else {
+          archipelagoMode.value = false;
+        }
+
+        resetStats();
+        initGame();
+      }
+    }
+  }
+
+  // Watch archipelago mode changes to enable archipelago game mode when connected
   watch(archipelagoMode, (isArchipelago) => {
-    if (isArchipelago) {
-      singlePlayerMode.value = false;
+    if (isArchipelago && gameMode.value !== 'archipelago' && status.value === 'connected') {
+      // User connected to AP, suggest switching to archipelago mode
+      if (confirm('Connected to Archipelago! Switch to Archipelago mode? This will start a new game.')) {
+        gameMode.value = 'archipelago';
+        resetStats();
+        initGame();
+      }
     }
   });
 
@@ -303,7 +337,17 @@
         <!-- Stats Panel -->
         <div class="mb-2 sm:mb-4 p-2 sm:p-3 bg-neutral-800/30 rounded-lg border border-neutral-700">
           <div class="flex items-center justify-between gap-2 flex-wrap">
-            <h2 class="text-sm sm:text-base font-semibold whitespace-nowrap">Blockupelago</h2>
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm sm:text-base font-semibold whitespace-nowrap">Blockupelago</h2>
+              <span
+                :class="[
+                  'text-2xs px-2 py-0.5 rounded-full font-medium',
+                  gameMode === 'free-play' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
+                ]"
+              >
+                {{ gameMode === 'free-play' ? '🎮 Free Play' : '🏝️ Archipelago' }}
+              </span>
+            </div>
             <div class="flex items-center gap-2 sm:gap-3 flex-wrap text-xs">
               <div class="flex items-center gap-1">
                 <span class="font-bold text-blue-400">{{ totalScore }}</span>
@@ -349,6 +393,8 @@
           :rotate-uses="rotateUses"
           :hold-uses="holdUses"
           :held-piece="heldPiece"
+          :game-mode="gameMode"
+          :total-gems-collected="totalGemsCollected"
           @place-piece="handlePlacePiece"
           @undo="undo"
           @remove-block="removeBlock"
@@ -433,31 +479,70 @@
 
             <section class="space-y-4">
               <h3 class="section-heading">Game Mode</h3>
-              <div class="bg-neutral-800/30 rounded-sm p-4">
-                <div class="flex items-center justify-between mb-3">
-                  <div>
-                    <div class="text-sm text-neutral-300">Single Player Mode</div>
-                    <div class="text-xs text-neutral-400 mt-1">Earn rewards through milestones</div>
+              <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3">
+                <p class="text-xs text-neutral-400 mb-3">Choose your gameplay style</p>
+
+                <!-- Free Play Mode -->
+                <button
+                  @click="handleGameModeChange('free-play')"
+                  :class="[
+                    'w-full text-left px-4 py-3 rounded-lg border-2 transition-all',
+                    gameMode === 'free-play'
+                      ? 'border-blue-500 bg-blue-500/20'
+                      : 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600'
+                  ]"
+                >
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="text-sm font-medium text-neutral-100">🎮 Free Play</div>
+                      <div class="text-xs text-neutral-400 mt-1">All pieces unlocked • Abilities cost gems</div>
+                    </div>
+                    <div v-if="gameMode === 'free-play'" class="text-blue-400 text-lg">✓</div>
                   </div>
-                  <button
-                    @click="singlePlayerMode = !singlePlayerMode"
-                    :disabled="archipelagoMode"
-                    :class="[
-                      'px-4 py-2 text-xs rounded transition-colors',
-                      singlePlayerMode ? 'bg-green-600 text-white' : 'bg-neutral-700/50 text-neutral-300 hover:bg-neutral-600/50',
-                      archipelagoMode && 'opacity-50 cursor-not-allowed',
-                    ]"
-                  >
-                    {{ singlePlayerMode ? 'ON' : 'OFF' }}
-                  </button>
+                </button>
+
+                <!-- Archipelago Mode -->
+                <button
+                  @click="handleGameModeChange('archipelago')"
+                  :disabled="status !== 'connected'"
+                  :class="[
+                    'w-full text-left px-4 py-3 rounded-lg border-2 transition-all',
+                    gameMode === 'archipelago'
+                      ? 'border-purple-500 bg-purple-500/20'
+                      : status === 'connected'
+                        ? 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600'
+                        : 'border-neutral-800 bg-neutral-900/50 opacity-50 cursor-not-allowed'
+                  ]"
+                >
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="text-sm font-medium text-neutral-100">🏝️ Archipelago</div>
+                      <div class="text-xs text-neutral-400 mt-1">
+                        {{ status === 'connected' ? 'Pieces & abilities from multiworld' : 'Connect to AP server first' }}
+                      </div>
+                    </div>
+                    <div v-if="gameMode === 'archipelago'" class="text-purple-400 text-lg">✓</div>
+                  </div>
+                </button>
+
+                <!-- Mode Description -->
+                <div class="mt-4 p-3 bg-neutral-900/50 rounded text-xs text-neutral-400">
+                  <template v-if="gameMode === 'free-play'">
+                    <span class="text-blue-400">Free Play:</span> All {{ ALL_PIECES.length }} pieces available! Collect gems to use undo, rotate, and hold abilities.
+                  </template>
+                  <template v-else-if="gameMode === 'archipelago'">
+                    <span class="text-purple-400">Archipelago:</span> Unlock pieces and abilities through the Archipelago multiworld server. Gems are AP items!
+                  </template>
                 </div>
-                <p v-if="archipelagoMode" class="text-xs text-amber-400">⚠️ Disabled while connected to Archipelago</p>
               </div>
             </section>
 
             <section class="space-y-4">
               <h3 class="section-heading">Game Info</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3">
+                <div v-if="gameMode === 'free-play'" class="mb-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-300">
+                  💎 Collect gems to use abilities! Each undo, rotate, or hold costs 1 gem.
+                </div>
                 <div>
                   <div class="flex items-center justify-between mb-2">
                     <span class="text-sm text-neutral-300">Grid Size</span>
@@ -489,37 +574,45 @@
             </section>
 
             <section class="space-y-4">
-              <h3 class="section-heading">Unlocked Abilities</h3>
+              <h3 class="section-heading">
+                {{ gameMode === 'free-play' ? 'Gem-Powered Abilities' : 'Unlocked Abilities' }}
+              </h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2 text-sm">
+                <div v-if="gameMode === 'free-play'" class="mb-3 p-2 bg-pink-500/10 border border-pink-500/30 rounded text-xs text-pink-300">
+                  💎 You have {{ totalGemsCollected }} gems
+                </div>
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">🔄 Rotate Pieces</span>
-                  <span :class="rotateUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ rotateUses }}
+                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : (rotateUses > 0 ? 'text-green-400' : 'text-neutral-500')">
+                    {{ gameMode === 'free-play' ? '1 gem' : rotateUses }}
                   </span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">↶ Undo</span>
-                  <span :class="undoUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ undoUses }}
+                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : (undoUses > 0 ? 'text-green-400' : 'text-neutral-500')">
+                    {{ gameMode === 'free-play' ? '1 gem' : undoUses }}
                   </span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">🗑️ Remove Block</span>
-                  <span :class="removeBlockUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ removeBlockUses }}
+                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : (removeBlockUses > 0 ? 'text-green-400' : 'text-neutral-500')">
+                    {{ gameMode === 'free-play' ? '1 gem' : removeBlockUses }}
                   </span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">📦 Hold Piece</span>
-                  <span :class="holdUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ holdUses }}
+                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : (holdUses > 0 ? 'text-green-400' : 'text-neutral-500')">
+                    {{ gameMode === 'free-play' ? '1 gem' : holdUses }}
                   </span>
                 </div>
               </div>
             </section>
 
-            <section v-if="singlePlayerMode" class="space-y-4">
-              <h3 class="section-heading">Unlocked Pieces ({{ unlockedPieceIds.length }})</h3>
+            <section v-if="gameMode === 'archipelago'" class="space-y-4">
+              <h3 class="section-heading">
+                Unlocked Pieces ({{ unlockedPieceIds.length }} / {{ ALL_PIECES.length }})
+                <span class="text-2xs text-purple-400 ml-2">via Archipelago</span>
+              </h3>
               <div class="bg-neutral-800/30 rounded-sm p-4">
                 <div class="grid grid-cols-2 gap-3">
                   <div
@@ -540,23 +633,6 @@
                         </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section v-if="singlePlayerMode" class="space-y-4">
-              <h3 class="section-heading">Milestones Progress</h3>
-              <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3 max-h-80 overflow-y-auto">
-                <div v-for="milestone in MILESTONES" :key="milestone.id" class="flex items-center justify-between text-xs">
-                  <div class="flex-1">
-                    <div class="flex items-center gap-2">
-                      <span :class="claimedMilestones.includes(milestone.id) ? 'text-green-400' : 'text-neutral-400'">
-                        {{ claimedMilestones.includes(milestone.id) ? '✓' : '○' }}
-                      </span>
-                      <span class="text-neutral-300">{{ milestone.score.toLocaleString() }} pts</span>
-                    </div>
-                    <div class="text-neutral-400 ml-5">{{ milestone.description }}</div>
                   </div>
                 </div>
               </div>
@@ -617,10 +693,13 @@
             <section class="space-y-3">
               <h3 class="section-heading">Grant Rewards</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2">
+                <button type="button" class="btn-secondary w-full text-xs" @click="totalScore += 100">📊 +100 Score</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="totalScore += 1000">📊 +1000 Score</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addRotateAbility()">+ Rotate (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addUndoAbility()">+ Undo (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addRemoveBlock()">+ Remove Block (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addHoldAbility()">+ Hold (1 use)</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="totalGemsCollected++">💎 Give Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="spawnGem()">💎 Spawn Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addPieceSlot()">+ Piece Slot</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addScoreMultiplier(0.1)">+ 0.1x Score Multiplier</button>

@@ -17,6 +17,8 @@
     rotateUses: number;
     holdUses: number;
     heldPiece: Piece | null;
+    gameMode: 'free-play' | 'archipelago';
+    totalGemsCollected: number;
   }>();
 
   const emit = defineEmits<{
@@ -56,6 +58,64 @@
     if (props.gridSize === 6) return maxSize;
     if (props.gridSize === 7) return 35;
     return minSize; // 9x9
+  });
+
+  // Check ability availability based on game mode
+  const canUseUndo = computed(() => {
+    if (props.gameMode === 'free-play') {
+      return props.totalGemsCollected > 0;
+    }
+    return props.undoUses > 0;
+  });
+
+  const canUseRotate = computed(() => {
+    if (props.gameMode === 'free-play') {
+      return props.totalGemsCollected > 0;
+    }
+    return props.rotateUses > 0;
+  });
+
+  const canUseHold = computed(() => {
+    if (props.gameMode === 'free-play') {
+      return props.totalGemsCollected > 0;
+    }
+    return props.holdUses > 0;
+  });
+
+  const canUseRemoveBlock = computed(() => {
+    if (props.gameMode === 'free-play') {
+      return props.totalGemsCollected > 0;
+    }
+    return props.removeBlockUses > 0;
+  });
+
+  // Display text for ability counts
+  const undoDisplayText = computed(() => {
+    if (props.gameMode === 'free-play') {
+      return `💎`;
+    }
+    return props.undoUses;
+  });
+
+  const rotateDisplayText = computed(() => {
+    if (props.gameMode === 'free-play') {
+      return `💎`;
+    }
+    return props.rotateUses;
+  });
+
+  const holdDisplayText = computed(() => {
+    if (props.gameMode === 'free-play') {
+      return `💎`;
+    }
+    return props.holdUses;
+  });
+
+  const removeBlockDisplayText = computed(() => {
+    if (props.gameMode === 'free-play') {
+      return `💎`;
+    }
+    return props.removeBlockUses;
   });
 
   // Check if piece can be placed at hovered position
@@ -136,7 +196,8 @@
 
   function getCellClass(row: number, col: number): string {
     const isBox = props.gridSize === 9;
-    const boxBorder = isBox && (row % 3 === 0 || col % 3 === 0);
+    const isTopBoxBorder = isBox && row % 3 === 0 && row !== 0;
+    const isLeftBoxBorder = isBox && col % 3 === 0 && col !== 0;
     const cellValue = props.grid[row]?.[col];
     const isClearing = props.clearingCells.has(`${row}-${col}`);
 
@@ -145,7 +206,9 @@
 
     return `
         ${bgColor}
-        ${boxBorder ? 'border-gray-600' : 'border-gray-700'}
+        border-gray-700
+        ${isTopBoxBorder ? 'border-t-2 border-t-gray-400' : ''}
+        ${isLeftBoxBorder ? 'border-l-2 border-l-gray-400' : ''}
         ${isPreviewCell(row, col) ? (canPlaceAtHovered.value ? 'bg-green-400 border-green-500' : 'bg-red-400 border-red-500') : ''}
         ${removeMode.value && cellValue === 1 ? 'hover:bg-red-500' : ''}
         ${isClearing ? 'clearing-cell' : ''}
@@ -344,23 +407,23 @@
 
         <!-- Undo Button -->
         <button
-          v-if="undoUses > 0"
+          v-if="canUseUndo"
           @click="emit('undo')"
           class="w-[80px] sm:w-[100px] px-2 py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-xs sm:text-sm font-medium"
         >
-          Undo<br />({{ undoUses }})
+          Undo<br />({{ undoDisplayText }})
         </button>
 
         <!-- Remove Block Button -->
         <button
-          v-if="removeBlockUses > 0"
+          v-if="canUseRemoveBlock"
           @click="toggleRemoveMode"
           :class="[
             'w-[80px] sm:w-[100px] px-2 py-2 rounded text-xs sm:text-sm font-medium',
             removeMode ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700',
           ]"
         >
-          {{ removeMode ? 'Cancel' : `Remove` }}<br />({{ removeBlockUses }})
+          {{ removeMode ? 'Cancel' : `Remove` }}<br />({{ removeBlockDisplayText }})
         </button>
       </div>
     </div>
@@ -408,23 +471,24 @@
         <div class="flex gap-1 sm:gap-2 h-[28px] sm:h-[32px]">
           <button
             @click="emit('rotate-piece', piece)"
-            :disabled="rotateUses <= 0"
+            :disabled="!canUseRotate"
             :class="[
               'flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors whitespace-nowrap',
-              rotateUses > 0 ? 'bg-blue-600/50 hover:bg-blue-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
+              canUseRotate ? 'bg-blue-600/50 hover:bg-blue-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
             ]"
           >
-            🔄 ({{ rotateUses }})
+            🔄 ({{ rotateDisplayText }})
           </button>
           <button
             @click="emit('hold-piece', piece)"
-            :disabled="holdUses <= 0"
+            :disabled="!canUseHold"
             :class="[
-              'flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors whitespace-nowrap',
-              holdUses > 0 ? 'bg-purple-600/50 hover:bg-purple-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
+              'flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors whitespace-nowrap flex items-center justify-center gap-1',
+              canUseHold ? 'bg-purple-600/50 hover:bg-purple-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
             ]"
           >
-            🤝 ({{ holdUses }})
+            <span class="inline-block w-3 h-3 border-2 border-dashed border-current rounded-sm"></span>
+            <span>({{ holdDisplayText }})</span>
           </button>
         </div>
       </div>

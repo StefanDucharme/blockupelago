@@ -14,10 +14,11 @@ import {
 import { usePersistentRef } from './usePersistence';
 import { getScoreLocationId, getLineClearLocationId, getBoxClearLocationId, getComboLocationId, getPieceLocationId } from './useArchipelagoItems';
 
+export type GameMode = 'free-play' | 'archipelago';
+
 export function useBlockudoku() {
   // Game mode
-  const singlePlayerMode = usePersistentRef('blockudoku_single_player', true);
-  const claimedMilestones = usePersistentRef<number[]>('blockudoku_claimed_milestones', []);
+  const gameMode = usePersistentRef<GameMode>('blockudoku_game_mode', 'free-play');
 
   // Game state
   const gridSize = usePersistentRef('blockudoku_grid_size', 9);
@@ -49,11 +50,11 @@ export function useBlockudoku() {
   const totalPiecesPlaced = usePersistentRef('blockudoku_pieces_placed', 0);
   const totalGemsCollected = usePersistentRef('blockudoku_gems_collected', 0);
 
-  // Unlocked pieces (from Archipelago)
+  // Unlocked pieces (from Archipelago only)
   const unlockedPieceIds = usePersistentRef<string[]>('blockudoku_unlocked_pieces', []);
 
-  // Initialize unlocked pieces if empty
-  if (unlockedPieceIds.value.length === 0) {
+  // Initialize unlocked pieces if empty (for archipelago mode)
+  if (unlockedPieceIds.value.length === 0 && gameMode.value === 'archipelago') {
     const shuffled = [...ALL_PIECES].sort(() => Math.random() - 0.5);
     unlockedPieceIds.value = shuffled.slice(0, 3).map((p) => p.id);
   }
@@ -78,6 +79,11 @@ export function useBlockudoku() {
 
   // Available pieces based on what's unlocked
   const availablePieces = computed(() => {
+    // In free-play mode, all pieces are available
+    if (gameMode.value === 'free-play') {
+      return ALL_PIECES;
+    }
+    // In archipelago mode, only unlocked pieces are available
     return ALL_PIECES.filter((p) => unlockedPieceIds.value.includes(p.id));
   });
 
@@ -177,19 +183,31 @@ export function useBlockudoku() {
     heldPiece.value = null;
     gemCells.value = [];
 
-    // Reset progression and abilities
-    claimedMilestones.value = [];
-    rotateUses.value = 0;
-    undoUses.value = 1;
-    removeBlockUses.value = 0;
-    holdUses.value = 0;
-    scoreMultiplier.value = 1.0;
-    maxPieceSlots.value = 3;
-    gridSize.value = 9;
+    // Free-play mode: no abilities, use gems instead
+    if (gameMode.value === 'free-play') {
+      rotateUses.value = 0;
+      undoUses.value = 0;
+      removeBlockUses.value = 0;
+      holdUses.value = 0;
+      scoreMultiplier.value = 1.0;
+      maxPieceSlots.value = 3;
+      // All pieces are available in free-play, no need to set unlockedPieceIds
+      unlockedPieceIds.value = [];
+    } else {
+      // Archipelago mode starts with limited resources from AP
+      rotateUses.value = 0;
+      undoUses.value = 0;
+      removeBlockUses.value = 0;
+      holdUses.value = 0;
+      scoreMultiplier.value = 1.0;
+      maxPieceSlots.value = 3;
 
-    // Reset to 3 random unique pieces
-    const shuffled = [...ALL_PIECES].sort(() => Math.random() - 0.5);
-    unlockedPieceIds.value = shuffled.slice(0, 3).map((p) => p.id);
+      // Reset to 3 random unique pieces (for archipelago mode)
+      const shuffled = [...ALL_PIECES].sort(() => Math.random() - 0.5);
+      unlockedPieceIds.value = shuffled.slice(0, 3).map((p) => p.id);
+    }
+
+    gridSize.value = 9;
   }
 
   // Place a piece
@@ -325,9 +343,6 @@ export function useBlockudoku() {
 
         totalScore.value += points;
 
-        // Check for single player rewards
-        checkSinglePlayerRewards();
-
         // Generate new pieces if all placed
         if (currentPieces.value.length === 0) {
           generateNewPieces();
@@ -356,14 +371,21 @@ export function useBlockudoku() {
 
   // Undo last move
   function undo() {
-    if (!lastMove.value || undoUses.value <= 0) {
-      return false;
+    if (!lastMove.value) return false;
+
+    // In free-play mode, consume a gem instead of ability uses
+    if (gameMode.value === 'free-play') {
+      if (totalGemsCollected.value <= 0) return false;
+      totalGemsCollected.value--;
+    } else {
+      // In archipelago mode, use ability uses
+      if (undoUses.value <= 0) return false;
+      undoUses.value--;
     }
 
     grid.value = lastMove.value.grid;
     currentPieces.value = lastMove.value.pieces;
     totalScore.value = lastMove.value.totalScore;
-    undoUses.value--;
     lastMove.value = null;
     isGameOver.value = false;
 
@@ -372,12 +394,21 @@ export function useBlockudoku() {
 
   // Remove a single block from the grid
   function removeBlock(row: number, col: number): boolean {
-    if (removeBlockUses.value <= 0 || grid.value[row]?.[col] === 0) {
+    if (grid.value[row]?.[col] === 0) {
       return false;
     }
 
+    // In free-play mode, consume a gem instead of ability uses
+    if (gameMode.value === 'free-play') {
+      if (totalGemsCollected.value <= 0) return false;
+      totalGemsCollected.value--;
+    } else {
+      // In archipelago mode, use ability uses
+      if (removeBlockUses.value <= 0) return false;
+      removeBlockUses.value--;
+    }
+
     grid.value = grid.value.map((r, rIdx) => r.map((cell, cIdx) => (rIdx === row && cIdx === col ? 0 : cell)));
-    removeBlockUses.value--;
 
     // Re-check game over state
     if (isGameOver.value) {
@@ -444,7 +475,15 @@ export function useBlockudoku() {
 
   // Hold piece functionality
   function holdPiece(piece: Piece): boolean {
-    if (holdUses.value <= 0) return false;
+    // In free-play mode, consume a gem instead of ability uses
+    if (gameMode.value === 'free-play') {
+      if (totalGemsCollected.value <= 0) return false;
+      totalGemsCollected.value--;
+    } else {
+      // In archipelago mode, use ability uses
+      if (holdUses.value <= 0) return false;
+      holdUses.value--;
+    }
 
     // Swap the piece with the held piece
     const temp = heldPiece.value;
@@ -461,13 +500,20 @@ export function useBlockudoku() {
       currentPieces.value = [...currentPieces.value, temp];
     }
 
-    holdUses.value--;
     return true;
   }
 
   // Rotate a piece 90 degrees clockwise
   function rotatePiece(piece: Piece) {
-    if (rotateUses.value <= 0) return;
+    // In free-play mode, consume a gem instead of ability uses
+    if (gameMode.value === 'free-play') {
+      if (totalGemsCollected.value <= 0) return;
+      totalGemsCollected.value--;
+    } else {
+      // In archipelago mode, use ability uses
+      if (rotateUses.value <= 0) return;
+      rotateUses.value--;
+    }
 
     const rotatedPiece = applyRotation(piece);
 
@@ -481,8 +527,6 @@ export function useBlockudoku() {
     if (heldPiece.value?.id === piece.id) {
       heldPiece.value = rotatedPiece;
     }
-
-    rotateUses.value--;
   }
 
   // Watch for grid size changes
@@ -491,70 +535,6 @@ export function useBlockudoku() {
       initGame();
     }
   });
-
-  // Single Player Mode Milestones
-  const MILESTONES = [
-    { id: 1, score: 100, reward: { type: 'piece', value: 1 }, description: 'Unlock 1 new piece' },
-    { id: 2, score: 250, reward: { type: 'rotate', value: 3 }, description: 'Rotate (3 uses)' },
-    { id: 3, score: 500, reward: { type: 'piece', value: 1 }, description: 'Unlock 1 new piece' },
-    { id: 4, score: 750, reward: { type: 'slot', value: 1 }, description: 'Unlock 4th piece slot' },
-    { id: 5, score: 1000, reward: { type: 'hold', value: 3 }, description: 'Hold Piece (3 uses)' },
-    { id: 6, score: 1500, reward: { type: 'piece', value: 2 }, description: 'Unlock 2 new pieces' },
-    { id: 7, score: 2000, reward: { type: 'undo', value: 3 }, description: 'Undo (3 uses)' },
-    { id: 8, score: 2500, reward: { type: 'removeBlock', value: 2 }, description: 'Remove Block (2 uses)' },
-    { id: 9, score: 3000, reward: { type: 'piece', value: 2 }, description: 'Unlock 2 new pieces' },
-    { id: 10, score: 4000, reward: { type: 'slot', value: 1 }, description: 'Unlock 5th piece slot' },
-    { id: 11, score: 5000, reward: { type: 'multiplier', value: 0.25 }, description: '1.25x Score Multiplier' },
-    { id: 12, score: 6000, reward: { type: 'piece', value: 3 }, description: 'Unlock 3 new pieces' },
-    { id: 13, score: 10000, reward: { type: 'removeBlock', value: 3 }, description: 'Remove Block (3 uses)' },
-  ];
-
-  // Check and grant single player rewards
-  function checkSinglePlayerRewards() {
-    if (!singlePlayerMode.value) return [];
-
-    const newRewards: typeof MILESTONES = [];
-
-    for (const milestone of MILESTONES) {
-      if (totalScore.value >= milestone.score && !claimedMilestones.value.includes(milestone.id)) {
-        claimedMilestones.value = [...claimedMilestones.value, milestone.id];
-
-        // Grant the reward
-        switch (milestone.reward.type) {
-          case 'piece':
-            // Unlock random pieces
-            const availableToUnlock = ALL_PIECES.filter((p) => !unlockedPieceIds.value.includes(p.id));
-            const shuffled = [...availableToUnlock].sort(() => Math.random() - 0.5);
-            const toUnlock = shuffled.slice(0, milestone.reward.value);
-            toUnlock.forEach((piece) => unlockPiece(piece.name));
-            break;
-          case 'undo':
-            undoUses.value += milestone.reward.value;
-            break;
-          case 'rotate':
-            rotateUses.value += milestone.reward.value;
-            break;
-          case 'removeBlock':
-            addRemoveBlock();
-            removeBlockUses.value += milestone.reward.value - 1;
-            break;
-          case 'hold':
-            holdUses.value += milestone.reward.value;
-            break;
-          case 'slot':
-            addPieceSlot();
-            break;
-          case 'multiplier':
-            addScoreMultiplier(milestone.reward.value);
-            break;
-        }
-
-        newRewards.push(milestone);
-      }
-    }
-
-    return newRewards;
-  }
 
   // Check for milestone achievements and return location IDs to send to AP
   function checkMilestones(): number[] {
@@ -595,9 +575,7 @@ export function useBlockudoku() {
     gemCells,
 
     // Mode
-    singlePlayerMode,
-    MILESTONES,
-    claimedMilestones,
+    gameMode,
 
     // Statistics
     totalLinesCleared,
@@ -625,7 +603,6 @@ export function useBlockudoku() {
     rotatePiece,
     spawnGem,
     checkMilestones,
-    checkSinglePlayerRewards,
 
     // Archipelago unlocks
     unlockPiece,
