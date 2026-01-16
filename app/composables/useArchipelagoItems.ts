@@ -31,11 +31,6 @@ export const AP_ITEMS = {
   T_SHAPE_3X3: 8000018,
   CROSS_3X3: 8000019,
 
-  // Grid Sizes (8001xxx)
-  GRID_6X6: 8001001,
-  GRID_7X7: 8001002,
-  GRID_9X9: 8001003,
-
   // Piece Slots (8002xxx)
   PIECE_SLOT_4: 8002001,
   PIECE_SLOT_5: 8002002,
@@ -44,7 +39,7 @@ export const AP_ITEMS = {
   ROTATE_ABILITY: 8003001,
   UNDO_ABILITY: 8003002,
   REMOVE_BLOCK: 8003003,
-  PLACEMENT_HINT: 8003004,
+  HOLD_ABILITY: 8003004,
 
   // Score Multipliers (8004xxx)
   SCORE_MULT_10: 8004001,
@@ -73,15 +68,12 @@ export const ITEM_NAME_TO_ID: Record<string, number> = {
   '3x3 Corner': AP_ITEMS.CORNER_3X3,
   '3x3 T-Shape': AP_ITEMS.T_SHAPE_3X3,
   '3x3 Cross': AP_ITEMS.CROSS_3X3,
-  '6x6 Grid': AP_ITEMS.GRID_6X6,
-  '7x7 Grid': AP_ITEMS.GRID_7X7,
-  '9x9 Grid': AP_ITEMS.GRID_9X9,
   '4th Piece Slot': AP_ITEMS.PIECE_SLOT_4,
   '5th Piece Slot': AP_ITEMS.PIECE_SLOT_5,
   'Rotate Ability': AP_ITEMS.ROTATE_ABILITY,
   'Undo Ability': AP_ITEMS.UNDO_ABILITY,
   'Remove Block': AP_ITEMS.REMOVE_BLOCK,
-  'Placement Hint': AP_ITEMS.PLACEMENT_HINT,
+  'Hold Ability': AP_ITEMS.HOLD_ABILITY,
   'Score Multiplier +10%': AP_ITEMS.SCORE_MULT_10,
   'Score Multiplier +25%': AP_ITEMS.SCORE_MULT_25,
   'Score Multiplier +50%': AP_ITEMS.SCORE_MULT_50,
@@ -94,8 +86,8 @@ export const AP_LOCATIONS = {
   SCORE_BASE: 9000000, // +1-20
   LINE_CLEAR_BASE: 9001000, // +1-30
   BOX_CLEAR_BASE: 9002000, // +1-20
-  COMBO_BASE: 9003000, // +1-10
   PIECES_BASE: 9004000, // +1-25
+  GEM_BASE: 9005000, // +1-100 (individual gems)
 } as const;
 
 // Milestone arrays
@@ -109,11 +101,12 @@ export const LINE_CLEAR_MILESTONES = [
 
 export const BOX_CLEAR_MILESTONES = [1, 3, 5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 90, 100, 125, 150, 175, 200, 250, 300];
 
-export const COMBO_MILESTONES = [1, 3, 5, 10, 15, 20, 25, 30, 40, 50];
-
 export const PIECE_MILESTONES = [
   10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 600, 700, 800, 900, 1000, 1250, 1500, 1750, 2000, 2500, 3000, 3500, 4000, 5000,
 ];
+
+// Max individual gem checks (each gem collected = 1 check)
+export const MAX_GEM_CHECKS = 100;
 
 // Helper to get location ID for a milestone
 export function getScoreLocationId(score: number): number | null {
@@ -131,14 +124,17 @@ export function getBoxClearLocationId(clears: number): number | null {
   return idx >= 0 ? AP_LOCATIONS.BOX_CLEAR_BASE + idx + 1 : null;
 }
 
-export function getComboLocationId(combos: number): number | null {
-  const idx = COMBO_MILESTONES.indexOf(combos);
-  return idx >= 0 ? AP_LOCATIONS.COMBO_BASE + idx + 1 : null;
-}
-
 export function getPieceLocationId(pieces: number): number | null {
   const idx = PIECE_MILESTONES.indexOf(pieces);
   return idx >= 0 ? AP_LOCATIONS.PIECES_BASE + idx + 1 : null;
+}
+
+export function getGemLocationId(gemNumber: number): number | null {
+  // Each gem gets its own check, up to MAX_GEM_CHECKS
+  if (gemNumber >= 1 && gemNumber <= MAX_GEM_CHECKS) {
+    return AP_LOCATIONS.GEM_BASE + gemNumber;
+  }
+  return null;
 }
 
 // ============================================
@@ -217,14 +213,14 @@ export function useArchipelagoItems() {
     SCORE_MILESTONES,
     LINE_CLEAR_MILESTONES,
     BOX_CLEAR_MILESTONES,
-    COMBO_MILESTONES,
     PIECE_MILESTONES,
+    MAX_GEM_CHECKS,
 
     // Export helpers
     getScoreLocationId,
     getLineClearLocationId,
     getBoxClearLocationId,
-    getComboLocationId,
     getPieceLocationId,
+    getGemLocationId,
   };
 }

@@ -180,11 +180,17 @@
               break;
 
             // Abilities
+            case AP_ITEMS.ROTATE_ABILITY:
+              addRotateAbility();
+              break;
             case AP_ITEMS.UNDO_ABILITY:
               addUndoAbility();
               break;
             case AP_ITEMS.REMOVE_BLOCK:
               addRemoveBlock();
+              break;
+            case AP_ITEMS.HOLD_ABILITY:
+              addHoldAbility();
               break;
 
             // Score multipliers
@@ -196,14 +202,6 @@
               break;
             case AP_ITEMS.SCORE_MULT_50:
               addScoreMultiplier(0.5);
-              break;
-
-            // Grid sizes (note: changing grid size requires new game)
-            case AP_ITEMS.GRID_6X6:
-            case AP_ITEMS.GRID_7X7:
-            case AP_ITEMS.GRID_9X9:
-              // Grid size items are received but don't automatically change the grid
-              // Player can manually select them from the settings
               break;
           }
         }

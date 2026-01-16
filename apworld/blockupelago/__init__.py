@@ -81,14 +81,6 @@ class BlockudokuWorld(World):
                 self.multiworld.itempool.append(self.create_item(piece_name))
                 item_count += 1
 
-        # Grid sizes - add based on starting size
-        starting_grid = self.options.starting_grid_size.value
-        grid_items = ["6x6 Grid", "7x7 Grid", "9x9 Grid"]
-        for i, grid_name in enumerate(grid_items):
-            if i > starting_grid:
-                self.multiworld.itempool.append(self.create_item(grid_name))
-                item_count += 1
-
         # Piece slots - add extras beyond starting
         starting_slots = self.options.starting_piece_slots.value
         if starting_slots < 4:
@@ -108,8 +100,8 @@ class BlockudokuWorld(World):
         for _ in range(self.options.remove_blocks_in_pool.value):
             self.multiworld.itempool.append(self.create_item("Remove Block"))
             item_count += 1
-        for _ in range(self.options.hints_in_pool.value):
-            self.multiworld.itempool.append(self.create_item("Placement Hint"))
+        for _ in range(self.options.hold_uses_in_pool.value):
+            self.multiworld.itempool.append(self.create_item("Hold Ability"))
             item_count += 1
 
         # Calculate how many locations we have (excluding Victory event)
@@ -139,7 +131,6 @@ class BlockudokuWorld(World):
         """Return slot data to be sent to the client."""
         return {
             "starting_piece_types": self.options.starting_piece_types.value,
-            "starting_grid_size": self.options.starting_grid_size.value,
             "starting_piece_slots": self.options.starting_piece_slots.value,
             "starting_abilities": self.options.starting_abilities.value,
             "goal_score": self.options.goal_score.value,

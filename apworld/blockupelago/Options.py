@@ -22,15 +22,6 @@ class StartingPieceTypes(Range):
     default = 5
 
 
-class StartingGridSize(Choice):
-    """The initial grid size you start with."""
-    display_name = "Starting Grid Size"
-    option_6x6 = 0
-    option_7x7 = 1
-    option_9x9 = 2
-    default = 0
-
-
 class StartingPieceSlots(Range):
     """Number of piece slots (pieces shown at once) you start with."""
     display_name = "Starting Piece Slots"
@@ -71,9 +62,9 @@ class RemoveBlocksInPool(Range):
     default = 5
 
 
-class HintsInPool(Range):
-    """Number of Placement Hint items in the item pool."""
-    display_name = "Hints in Pool"
+class HoldUsesInPool(Range):
+    """Number of Hold Ability items in the item pool."""
+    display_name = "Hold Abilities in Pool"
     range_start = 1
     range_end = 10
     default = 3
@@ -90,9 +81,9 @@ class ScoreMultipliersInPool(Range):
 class GoalScore(Range):
     """Total score required to complete the goal."""
     display_name = "Goal Score"
-    range_start = 1000
-    range_end = 50000
-    default = 10000
+    range_start = 10000
+    range_end = 100000
+    default = 30000
 
 
 class DeathLink(Toggle):
@@ -105,21 +96,12 @@ class DeathLink(Toggle):
 class BlockudokuOptions(PerGameCommonOptions):
     """Options for Blockudoku."""
     starting_piece_types: StartingPieceTypes
-    starting_grid_size: StartingGridSize
     starting_piece_slots: StartingPieceSlots
     starting_abilities: StartingAbilities
     rotate_uses_in_pool: RotateUsesInPool
     undo_uses_in_pool: UndoUsesInPool
     remove_blocks_in_pool: RemoveBlocksInPool
-    hints_in_pool: HintsInPool
+    hold_uses_in_pool: HoldUsesInPool
     score_multipliers_in_pool: ScoreMultipliersInPool
     goal_score: GoalScore
-    death_link: DeathLink
-
-    coins_per_bundle: CoinsPerBundle
-    extra_lives_in_pool: ExtraLivesInPool
-    hint_reveals_in_pool: HintRevealsInPool
-    coin_bundles_in_pool: CoinBundlesInPool
-    cell_solves_in_pool: CellSolvesInPool
-    goal_puzzles: GoalPuzzles
     death_link: DeathLink
