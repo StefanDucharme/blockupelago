@@ -74,6 +74,7 @@ export function useBlockudoku() {
   const freeRemove = usePersistentRef('blockudoku_free_remove', false); // Make remove block free in free-play
   const freeHold = usePersistentRef('blockudoku_free_hold', false); // Make hold ability free in free-play
   const freeMirror = usePersistentRef('blockudoku_free_mirror', false); // Make mirror ability free in free-play
+  const freeShrink = usePersistentRef('blockudoku_free_shrink', false); // Make shrink ability free in free-play
 
   // Abilities
   const rotateUses = usePersistentRef('blockudoku_rotate_uses', 0);
@@ -81,6 +82,7 @@ export function useBlockudoku() {
   const removeBlockUses = usePersistentRef('blockudoku_remove_uses', 0);
   const holdUses = usePersistentRef('blockudoku_hold_uses', 0);
   const mirrorUses = usePersistentRef('blockudoku_mirror_uses', 0);
+  const shrinkUses = usePersistentRef('blockudoku_shrink_uses', 0);
   const heldPiece = usePersistentRef<Piece | null>('blockudoku_held_piece', null);
 
   // Score multiplier (from AP items)
@@ -649,6 +651,10 @@ export function useBlockudoku() {
     mirrorUses.value++;
   }
 
+  function addShrinkAbility() {
+    shrinkUses.value++;
+  }
+
   function addScoreMultiplier(amount: number) {
     baseMultiplier.value += amount;
     scoreMultiplier.value = baseMultiplier.value + totalCombos.value * 0.02;
@@ -769,6 +775,42 @@ export function useBlockudoku() {
     }
   }
 
+  // Shrink a piece to a single block
+  function shrinkPiece(piece: Piece) {
+    // In free-play mode, consume a gem unless it's set to free
+    if (gameMode.value === 'free-play') {
+      if (!freeShrink.value) {
+        if (totalGemsCollected.value <= 0) return;
+        totalGemsCollected.value--;
+      }
+    } else {
+      // In archipelago mode, use ability uses
+      if (shrinkUses.value <= 0) return;
+      shrinkUses.value--;
+    }
+
+    // Find the single block piece
+    const singleBlockPiece = ALL_PIECES.find((p) => p.id === 'single');
+    if (!singleBlockPiece) return;
+
+    // Create a new single block piece with the original piece's color
+    const shrunkPiece: Piece = {
+      ...singleBlockPiece,
+      color: piece.color,
+    };
+
+    // Update the piece in currentPieces (by reference)
+    const index = currentPieces.value.findIndex((p) => p === piece);
+    if (index !== -1) {
+      currentPieces.value = [...currentPieces.value.slice(0, index), shrunkPiece, ...currentPieces.value.slice(index + 1)];
+    }
+
+    // Update held piece if it's the one being shrunk
+    if (heldPiece.value === piece) {
+      heldPiece.value = shrunkPiece;
+    }
+  }
+
   // Watch for grid size changes
   watch(gridSize, () => {
     if (grid.value.length !== gridSize.value) {
@@ -827,6 +869,7 @@ export function useBlockudoku() {
     removeBlockUses,
     holdUses,
     mirrorUses,
+    shrinkUses,
     heldPiece,
     scoreMultiplier,
     baseMultiplier,
@@ -840,6 +883,7 @@ export function useBlockudoku() {
     freeRemove,
     freeHold,
     freeMirror,
+    freeShrink,
 
     // Actions
     initGame,
@@ -851,6 +895,7 @@ export function useBlockudoku() {
     holdPiece,
     rotatePiece,
     mirrorPiece,
+    shrinkPiece,
     spawnGem,
     checkMilestones,
 
@@ -864,6 +909,7 @@ export function useBlockudoku() {
     addRotateAbility,
     addHoldAbility,
     addMirrorAbility,
+    addShrinkAbility,
     addScoreMultiplier,
     addPieceSlot,
     unlockedPieceIds,

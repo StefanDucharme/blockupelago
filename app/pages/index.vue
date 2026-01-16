@@ -73,6 +73,9 @@
     freeRemove,
     freeHold,
     freeMirror,
+    freeShrink,
+    shrinkUses,
+    shrinkPiece,
     initGame,
     resetStats,
     resetAllProgress,
@@ -90,6 +93,7 @@
     addRotateAbility,
     addHoldAbility,
     addMirrorAbility,
+    addShrinkAbility,
     addScoreMultiplier,
     addPieceSlot,
     reapplyArchipelagoItems,
@@ -709,6 +713,7 @@
           :rotate-uses="rotateUses"
           :hold-uses="holdUses"
           :mirror-uses="mirrorUses"
+          :shrink-uses="shrinkUses"
           :held-piece="heldPiece"
           :game-mode="gameMode"
           :total-gems-collected="totalGemsCollected"
@@ -717,6 +722,7 @@
           :free-remove="freeRemove"
           :free-hold="freeHold"
           :free-mirror="freeMirror"
+          :free-shrink="freeShrink"
           @place-piece="handlePlacePiece"
           @undo="undo"
           @remove-block="removeBlock"
@@ -724,6 +730,7 @@
           @hold-piece="holdPiece"
           @rotate-piece="rotatePiece"
           @mirror-piece="mirrorPiece"
+          @shrink-piece="shrinkPiece"
         />
       </div>
 
@@ -1099,6 +1106,14 @@
                       <span class="text-xs" :class="'text-green-400'"> Free </span>
                     </label>
                   </div>
+                  <div class="flex items-center justify-between py-1">
+                    <span class="text-neutral-300">⬇️ Shrink to 1 Block</span>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <span class="text-xs" :class="'text-pink-400'"> 1 gem </span>
+                      <input type="checkbox" v-model="freeShrink" class="toggle-checkbox toggle-checkbox-pink" />
+                      <span class="text-xs" :class="'text-green-400'"> Free </span>
+                    </label>
+                  </div>
                 </template>
 
                 <!-- Archipelago mode: show ability counts -->
@@ -1131,6 +1146,12 @@
                     <span class="text-neutral-300"><span class="text-cyan-400">↔️</span> Mirror Piece</span>
                     <span :class="mirrorUses > 0 ? 'text-green-400' : 'text-neutral-500'">
                       {{ mirrorUses }}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-neutral-300">⬇️ Shrink to 1 Block</span>
+                    <span :class="shrinkUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                      {{ shrinkUses }}
                     </span>
                   </div>
                 </template>
@@ -1257,6 +1278,7 @@
                 <button type="button" class="btn-secondary w-full text-xs" @click="addRemoveBlock()">+ Remove Block (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addHoldAbility()">+ Hold (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addMirrorAbility()">+ Mirror (1 use)</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addShrinkAbility()">+ Shrink (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="totalGemsCollected++">💎 Give Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="spawnGem()">💎 Spawn Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addPieceSlot()">+ Piece Slot</button>

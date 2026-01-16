@@ -18,6 +18,7 @@
     rotateUses: number;
     holdUses: number;
     mirrorUses: number;
+    shrinkUses: number;
     heldPiece: Piece | null;
     gameMode: 'free-play' | 'archipelago';
     totalGemsCollected: number;
@@ -26,6 +27,7 @@
     freeRemove?: boolean;
     freeHold?: boolean;
     freeMirror?: boolean;
+    freeShrink?: boolean;
   }>();
 
   const emit = defineEmits<{
@@ -36,6 +38,7 @@
     (e: 'hold-piece', piece: Piece): void;
     (e: 'rotate-piece', piece: Piece): void;
     (e: 'mirror-piece', piece: Piece): void;
+    (e: 'shrink-piece', piece: Piece): void;
   }>();
 
   const selectedPiece = ref<Piece | null>(null);
@@ -89,6 +92,13 @@
       return props.freeMirror || props.totalGemsCollected > 0;
     }
     return props.mirrorUses > 0;
+  });
+
+  const canUseShrink = computed(() => {
+    if (props.gameMode === 'free-play') {
+      return props.freeShrink || props.totalGemsCollected > 0;
+    }
+    return props.shrinkUses > 0;
   });
 
   // Check if a specific piece can be rotated (either has resources or piece already rotated)
@@ -164,6 +174,13 @@
       return props.freeMirror ? '' : `(💎)`;
     }
     return props.mirrorUses;
+  });
+
+  const shrinkDisplayText = computed(() => {
+    if (props.gameMode === 'free-play') {
+      return props.freeShrink ? '' : `(💎)`;
+    }
+    return props.shrinkUses;
   });
 
   const removeBlockDisplayText = computed(() => {
@@ -593,6 +610,16 @@
             ]"
           >
             📦 <span v-if="holdDisplayText" class="block">{{ holdDisplayText }}</span>
+          </button>
+          <button
+            @click="emit('shrink-piece', piece)"
+            :disabled="!canUseShrink"
+            :class="[
+              'w-full sm:flex-1 text-xs rounded transition-colors p-1',
+              canUseShrink ? 'bg-orange-600/50 hover:bg-orange-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
+            ]"
+          >
+            ⬇️ <span v-if="shrinkDisplayText" class="block">{{ shrinkDisplayText }}</span>
           </button>
         </div>
       </div>
