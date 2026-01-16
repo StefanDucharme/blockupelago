@@ -46,20 +46,27 @@
   <div class="flex flex-col gap-1.5 sm:gap-3 items-center">
     <!-- Undo Button -->
     <button
-      v-if="canUseUndo"
       @click="emit('undo')"
-      class="w-22 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-xs font-medium leading-tight"
+      :disabled="!canUseUndo"
+      :class="[
+        'w-22 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 rounded text-xs font-medium leading-tight transition-colors',
+        canUseUndo ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
+      ]"
     >
       Undo {{ undoDisplayText }}
     </button>
 
     <!-- Remove Block Button -->
     <button
-      v-if="canUseRemoveBlock"
       @click="emit('toggle-remove-mode')"
+      :disabled="!canUseRemoveBlock && !removeMode"
       :class="[
-        'w-22 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 rounded text-xs font-medium leading-tight',
-        removeMode ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700',
+        'w-22 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 rounded text-xs font-medium leading-tight transition-colors',
+        removeMode
+          ? 'bg-red-600 hover:bg-red-700'
+          : canUseRemoveBlock
+            ? 'bg-orange-600 hover:bg-orange-700'
+            : 'bg-gray-600/30 cursor-not-allowed opacity-50',
       ]"
     >
       {{ removeMode ? 'Cancel' : `Remove` }} {{ removeBlockDisplayText }}
