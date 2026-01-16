@@ -54,9 +54,9 @@ item_table: Dict[str, BlockudokuItemData] = {
     "3x3 T-Shape": BlockudokuItemData(code=8000017, classification=ItemClassification.progression),
     "3x3 Cross": BlockudokuItemData(code=8000018, classification=ItemClassification.progression),
 
-    # === Piece Slots (Useful) ===
-    "4th Piece Slot": BlockudokuItemData(code=8002001, classification=ItemClassification.useful),
-    "5th Piece Slot": BlockudokuItemData(code=8002002, classification=ItemClassification.useful),
+    # === Piece Slots (Rare Permanent) ===
+    "4th Piece Slot": BlockudokuItemData(code=8002001, classification=ItemClassification.progression),
+    "5th Piece Slot": BlockudokuItemData(code=8002002, classification=ItemClassification.progression),
 
     # === Abilities (Useful) ===
     "Rotate Ability": BlockudokuItemData(code=8003001, classification=ItemClassification.useful),
@@ -65,6 +65,11 @@ item_table: Dict[str, BlockudokuItemData] = {
     "Hold Ability": BlockudokuItemData(code=8003004, classification=ItemClassification.useful),
     "Mirror Ability": BlockudokuItemData(code=8003005, classification=ItemClassification.useful),
     "Shrink Ability": BlockudokuItemData(code=8003006, classification=ItemClassification.useful),
+
+    # === Permanent Abilities (Rare Permanent) ===
+    "Permanent Free Rotate": BlockudokuItemData(code=8003101, classification=ItemClassification.progression),
+    "Permanent Free Mirror": BlockudokuItemData(code=8003102, classification=ItemClassification.progression),
+    "Permanent Free Hold": BlockudokuItemData(code=8003103, classification=ItemClassification.progression),
 
     # === Score Multipliers (Filler/Useful) ===
     "Score Multiplier +10%": BlockudokuItemData(code=8004001, classification=ItemClassification.filler),
