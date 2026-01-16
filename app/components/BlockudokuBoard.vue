@@ -11,7 +11,6 @@
     totalScore: number;
     clearingCells: Set<string>;
     gemCells: { row: number; col: number; checkId: number }[];
-    canUndo: boolean;
     undoUses: number;
     removeBlockUses: number;
     scoreMultiplier: number;
@@ -345,7 +344,7 @@
 
         <!-- Undo Button -->
         <button
-          v-if="canUndo && undoUses > 0"
+          v-if="undoUses > 0"
           @click="emit('undo')"
           class="w-[80px] sm:w-[100px] px-2 py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-xs sm:text-sm font-medium"
         >

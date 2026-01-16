@@ -50,7 +50,6 @@
     totalPiecesPlaced,
     totalGemsCollected,
     rotateUses,
-    canUndo,
     undoUses,
     removeBlockUses,
     holdUses,
@@ -72,6 +71,7 @@
     checkMilestones,
     unlockPiece,
     setGridSize,
+    getCollectedGemChecks,
     addUndoAbility,
     addRemoveBlock,
     addRotateAbility,
@@ -82,7 +82,8 @@
 
   const { archipelagoMode, checkLocation, AP_ITEMS, ITEM_NAME_TO_ID } = useArchipelagoItems();
 
-  const { host, port, slot, password, useSecureConnection, status, connect, disconnect, items, lastMessage } = useArchipelago();
+  const { host, port, slot, password, useSecureConnection, status, connect, disconnect, items, lastMessage, checkLocations, checkGoalCompletion } =
+    useArchipelago();
 
   // Status indicator
   const statusMeta = computed(() => {
@@ -198,6 +199,14 @@
             case AP_ITEMS.SCORE_MULT_50:
               addScoreMultiplier(0.5);
               break;
+
+            // Grid sizes (note: changing grid size requires new game)
+            case AP_ITEMS.GRID_6X6:
+            case AP_ITEMS.GRID_7X7:
+            case AP_ITEMS.GRID_9X9:
+              // Grid size items are received but don't automatically change the grid
+              // Player can manually select them from the settings
+              break;
           }
         }
       }
@@ -212,16 +221,44 @@
     }
   }
 
+  // Watch archipelago mode changes to disable single player mode
+  watch(archipelagoMode, (isArchipelago) => {
+    if (isArchipelago) {
+      singlePlayerMode.value = false;
+    }
+  });
+
   // Watch for milestone achievements and send checks
   watch([totalScore, totalLinesCleared, totalBoxesCleared, totalCombos, totalPiecesPlaced], () => {
     if (!archipelagoMode.value) return;
 
     const locationIds = checkMilestones();
+    const newChecks: number[] = [];
     for (const locationId of locationIds) {
       if (checkLocation(locationId)) {
-        // Send to AP server (handled by useArchipelago)
-        console.log(`Sending check for location ${locationId}`);
+        // This is a new check, add to list to send
+        newChecks.push(locationId);
       }
+    }
+
+    // Send all new checks to AP server
+    if (newChecks.length > 0) {
+      console.log('[AP] Sending checks:', newChecks);
+      checkLocations(newChecks);
+    }
+
+    // Check goal completion
+    checkGoalCompletion(totalScore.value);
+  });
+
+  // Watch for gem collections and send checks
+  watch(totalGemsCollected, () => {
+    if (!archipelagoMode.value) return;
+
+    const gemChecks = getCollectedGemChecks();
+    if (gemChecks.length > 0) {
+      console.log('[AP] Sending gem checks:', gemChecks);
+      checkLocations(gemChecks);
     }
   });
 
@@ -306,7 +343,6 @@
           :total-score="totalScore"
           :clearing-cells="clearingCells"
           :gem-cells="gemCells"
-          :can-undo="canUndo"
           :undo-uses="undoUses"
           :remove-block-uses="removeBlockUses"
           :score-multiplier="scoreMultiplier"
@@ -396,6 +432,30 @@
             </div>
 
             <section class="space-y-4">
+              <h3 class="section-heading">Game Mode</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4">
+                <div class="flex items-center justify-between mb-3">
+                  <div>
+                    <div class="text-sm text-neutral-300">Single Player Mode</div>
+                    <div class="text-xs text-neutral-400 mt-1">Earn rewards through milestones</div>
+                  </div>
+                  <button
+                    @click="singlePlayerMode = !singlePlayerMode"
+                    :disabled="archipelagoMode"
+                    :class="[
+                      'px-4 py-2 text-xs rounded transition-colors',
+                      singlePlayerMode ? 'bg-green-600 text-white' : 'bg-neutral-700/50 text-neutral-300 hover:bg-neutral-600/50',
+                      archipelagoMode && 'opacity-50 cursor-not-allowed',
+                    ]"
+                  >
+                    {{ singlePlayerMode ? 'ON' : 'OFF' }}
+                  </button>
+                </div>
+                <p v-if="archipelagoMode" class="text-xs text-amber-400">⚠️ Disabled while connected to Archipelago</p>
+              </div>
+            </section>
+
+            <section class="space-y-4">
               <h3 class="section-heading">Game Info</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3">
                 <div>
@@ -434,25 +494,25 @@
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">🔄 Rotate Pieces</span>
                   <span :class="rotateUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ rotateUses > 0 ? `✓ (${rotateUses} uses)` : '✗ No uses' }}
+                    {{ rotateUses }}
                   </span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">↶ Undo</span>
-                  <span :class="canUndo ? 'text-green-400' : 'text-neutral-500'">
-                    {{ canUndo ? `✓ (${undoUses} uses)` : '✗ Locked' }}
+                  <span :class="undoUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                    {{ undoUses }}
                   </span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">🗑️ Remove Block</span>
                   <span :class="removeBlockUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ removeBlockUses > 0 ? `✓ (${removeBlockUses} uses)` : '✗ No uses' }}
+                    {{ removeBlockUses }}
                   </span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">📦 Hold Piece</span>
                   <span :class="holdUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ holdUses > 0 ? `✓ (${holdUses} uses)` : '✗ No uses' }}
+                    {{ holdUses }}
                   </span>
                 </div>
               </div>
@@ -516,11 +576,9 @@
                 <button
                   class="w-full px-4 py-3 rounded text-sm font-medium transition-colors flex items-center justify-between"
                   :class="
-                    canUndo && undoUses > 0
-                      ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30'
-                      : 'bg-neutral-700/30 text-neutral-500 cursor-not-allowed'
+                    undoUses > 0 ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30' : 'bg-neutral-700/30 text-neutral-500 cursor-not-allowed'
                   "
-                  :disabled="!canUndo || undoUses <= 0"
+                  :disabled="undoUses <= 0"
                   @click="undo"
                 >
                   <span>↶ Undo Last Move</span>

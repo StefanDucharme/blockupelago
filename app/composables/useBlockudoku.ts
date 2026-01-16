@@ -27,6 +27,16 @@ export function useBlockudoku() {
   // Clearing animation state
   const clearingCells = ref<Set<string>>(new Set()); // Set of "row-col" strings
 
+  // Collected gem check IDs that need to be sent to AP
+  const collectedGemChecks = ref<number[]>([]);
+
+  // Get and clear collected gem checks (for sending to AP)
+  function getCollectedGemChecks(): number[] {
+    const checks = [...collectedGemChecks.value];
+    collectedGemChecks.value = [];
+    return checks;
+  }
+
   // Gem cells (Archipelago checks)
   const gemCells = ref<{ row: number; col: number; checkId: number }[]>([]);
   const gemSpawnChance = 0.3; // 30% chance to spawn a gem on piece restock
@@ -50,7 +60,6 @@ export function useBlockudoku() {
 
   // Abilities
   const rotateUses = usePersistentRef('blockudoku_rotate_uses', 0);
-  const canUndo = usePersistentRef('blockudoku_can_undo', false);
   const undoUses = usePersistentRef('blockudoku_undo_uses', 1);
   const removeBlockUses = usePersistentRef('blockudoku_remove_uses', 0);
   const holdUses = usePersistentRef('blockudoku_hold_uses', 0);
@@ -171,7 +180,6 @@ export function useBlockudoku() {
     // Reset progression and abilities
     claimedMilestones.value = [];
     rotateUses.value = 0;
-    canUndo.value = false;
     undoUses.value = 1;
     removeBlockUses.value = 0;
     holdUses.value = 0;
@@ -292,6 +300,7 @@ export function useBlockudoku() {
             if (gem) {
               console.log('💎 Gem collected via line clear! Check ID:', gem.checkId);
               totalGemsCollected.value++;
+              collectedGemChecks.value.push(gem.checkId);
             }
             gemCells.value.splice(index, 1);
           });
@@ -404,7 +413,6 @@ export function useBlockudoku() {
 
   // Add abilities
   function addUndoAbility() {
-    canUndo.value = true;
     undoUses.value++;
   }
 
@@ -600,7 +608,6 @@ export function useBlockudoku() {
 
     // Abilities
     rotateUses,
-    canUndo,
     undoUses,
     removeBlockUses,
     holdUses,
@@ -623,6 +630,7 @@ export function useBlockudoku() {
     // Archipelago unlocks
     unlockPiece,
     setGridSize,
+    getCollectedGemChecks,
     addUndoAbility,
     addRemoveBlock,
     addRotateAbility,
