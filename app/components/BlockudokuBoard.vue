@@ -52,6 +52,8 @@
   const dragOffset = ref<{ x: number; y: number }>({ x: 0, y: 0 });
   const isTouchDrag = ref(false); // Track if current drag is from touch
   const gridRef = ref<HTMLElement | null>(null);
+  const holdAreaRef = ref<HTMLElement | null>(null);
+  const isHoveringHoldArea = ref(false);
 
   // Calculate cell size based on grid size and screen size
   const cellSize = computed(() => {
@@ -369,6 +371,22 @@
 
     dragPosition.value = { x: clientX, y: clientY };
 
+    // Check if hovering over hold area
+    if (holdAreaRef.value && draggedPiece.value && draggedPiece.value !== props.heldPiece) {
+      const holdRect = holdAreaRef.value.getBoundingClientRect();
+      const isOverHoldArea = clientX >= holdRect.left && clientX <= holdRect.right && clientY >= holdRect.top && clientY <= holdRect.bottom;
+
+      isHoveringHoldArea.value = isOverHoldArea;
+
+      if (isOverHoldArea) {
+        hoveredCell.value = null;
+        event.preventDefault();
+        return;
+      }
+    } else {
+      isHoveringHoldArea.value = false;
+    }
+
     // Update hovered cell based on drag position
     if (gridRef.value) {
       const gridRect = gridRef.value.getBoundingClientRect();
@@ -395,8 +413,12 @@
   function handleDragEnd(event: MouseEvent | TouchEvent) {
     if (!isDragging.value || !draggedPiece.value) return;
 
+    // Check if dropped on hold area
+    if (isHoveringHoldArea.value && canUseHold.value && draggedPiece.value !== props.heldPiece) {
+      emit('hold-piece', draggedPiece.value);
+    }
     // Try to place the piece at the hovered cell
-    if (hoveredCell.value && canPlaceAtHovered.value) {
+    else if (hoveredCell.value && canPlaceAtHovered.value) {
       emit('place-piece', draggedPiece.value, hoveredCell.value.row, hoveredCell.value.col);
     }
 
@@ -406,6 +428,7 @@
     draggedPiece.value = null;
     selectedPiece.value = null;
     hoveredCell.value = null;
+    isHoveringHoldArea.value = false;
 
     event.preventDefault();
   }
@@ -500,17 +523,22 @@
         <!-- Hold Piece Area -->
         <div class="flex flex-col gap-1 sm:gap-2">
           <div
-            v-if="heldPiece"
+            ref="holdAreaRef"
             :class="[
-              'p-1.5 sm:p-2 rounded-lg transition-all w-16 h-16 sm:w-25 sm:h-25 flex items-center justify-center cursor-grab active:cursor-grabbing',
-              selectedPiece === heldPiece ? 'bg-blue-700 scale-110' : 'bg-gray-700/50 border-2 border-dashed border-gray-500',
-              isDragging && draggedPiece === heldPiece ? 'opacity-50' : '',
+              'p-1.5 sm:p-2 rounded-lg transition-all w-16 h-16 sm:w-25 sm:h-25 flex flex-col items-center justify-center',
+              heldPiece ? 'cursor-grab active:cursor-grabbing' : '',
+              heldPiece && selectedPiece === heldPiece ? 'bg-blue-700 scale-110' : '',
+              heldPiece ? 'bg-gray-700/50 border-2 border-dashed border-gray-500' : 'bg-purple-600/30 border-2 border-dashed border-purple-500',
+              !heldPiece && isHoveringHoldArea && canUseHold ? 'bg-purple-600/60 border-purple-400 scale-110' : '',
+              !heldPiece && !canUseHold ? 'opacity-50 cursor-not-allowed' : '',
+              heldPiece && isDragging && draggedPiece === heldPiece ? 'opacity-50' : '',
             ]"
-            @click="selectPiece(heldPiece)"
+            @click="heldPiece && selectPiece(heldPiece)"
             @mousedown="(e) => heldPiece && handleDragStart(e, heldPiece)"
             @touchstart="(e) => heldPiece && handleDragStart(e, heldPiece)"
           >
             <div
+              v-if="heldPiece"
               class="grid gap-0.5"
               :style="{
                 gridTemplateColumns: `repeat(${heldPiece.shape[0]?.length || 0}, 15px)`,
@@ -527,12 +555,15 @@
                 />
               </div>
             </div>
-          </div>
-          <div
-            v-else
-            class="p-1.5 sm:p-2 rounded-lg transition-all w-16 h-16 sm:w-25 sm:h-25 flex items-center justify-center bg-gray-700/50 border-2 border-dashed border-gray-500"
-          >
-            <div class="text-2xs sm:text-xs text-center text-neutral-500">📦 Hold</div>
+            <template v-else>
+              <div class="text-lg sm:text-2xl mb-0.5">📦</div>
+              <div class="text-2xs sm:text-xs text-center font-medium" :class="canUseHold ? 'text-purple-300' : 'text-neutral-500'">
+                {{ isHoveringHoldArea ? 'Drop!' : 'Hold' }}
+              </div>
+              <div v-if="holdDisplayText" class="text-2xs text-center" :class="canUseHold ? 'text-purple-200' : 'text-neutral-600'">
+                {{ holdDisplayText }}
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -600,16 +631,6 @@
           >
             <span class="text-cyan-300">↔️</span
             ><span v-if="!piece.hasBeenMirrored && mirrorDisplayText" class="block"> {{ mirrorDisplayText }}</span>
-          </button>
-          <button
-            @click="emit('hold-piece', piece)"
-            :disabled="!canUseHold"
-            :class="[
-              'w-full sm:flex-1 text-xs rounded transition-colors p-1',
-              canUseHold ? 'bg-purple-600/50 hover:bg-purple-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
-            ]"
-          >
-            📦 <span v-if="holdDisplayText" class="block">{{ holdDisplayText }}</span>
           </button>
           <button
             @click="emit('shrink-piece', piece)"
