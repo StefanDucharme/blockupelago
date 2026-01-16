@@ -3,14 +3,13 @@ name: BlockupelagoP1          # Slot name (must match client)
 game: Blockupelago            # Do not change
 
 Blockupelago:
-  starting_piece_types: 5     # Number of piece types you start with (3-10)
-  starting_grid_size: 6x6     # Starting grid size (6x6, 7x7, 9x9)
+  starting_piece_types: 3     # Number of piece types you start with (3-10)
   starting_piece_slots: 3     # Number of piece slots shown at once (2-3)
-  starting_abilities: 1       # Number of abilities you start with (0-4)
-  rotate_uses_in_pool: 3      # Rotate Ability items in pool
-  undo_uses_in_pool: 3        # Undo Ability items in pool
-  remove_blocks_in_pool: 5    # Remove Block items in pool
-  hints_in_pool: 3            # Placement Hint items in pool
-  score_multipliers_in_pool: 10  # Score Multiplier items in pool
-  goal_score: 10000           # Total score required to complete (1000-50000)
+  starting_abilities: 0       # Number of abilities you start with (0-4)
+  rotate_uses_in_pool: 10      # Rotate Ability items in pool (1-10)
+  undo_uses_in_pool: 10        # Undo Ability items in pool (1-10)
+  remove_blocks_in_pool: 10    # Remove Block items in pool (1-10)
+  hold_uses_in_pool: 10       # Hold Ability items in pool (1-10)
+  score_multipliers_in_pool: 10  # Score Multiplier items in pool (0-20)
+  goal_score: 30000           # Total score required to complete (10000-100000)
   death_link: false           # Enable DeathLink (true/false)
