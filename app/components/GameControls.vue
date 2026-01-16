@@ -101,7 +101,7 @@
         v-else
         :ref="holdAreaRef"
         :class="[
-          'p-1.5 sm:p-2 rounded-lg transition-all w-16 h-16 sm:w-25 sm:h-25 flex flex-col items-center justify-center',
+          'p-1.5 sm:p-2 rounded-lg transition-all w-18 h-18 sm:w-30 sm:h-30 flex flex-col items-center justify-center',
           'bg-purple-600/30 border-2 border-dashed border-purple-500',
           isHoveringHoldArea && canUseHold ? 'bg-purple-600/60 border-purple-400 scale-110' : '',
           !canUseHold ? 'opacity-50 cursor-not-allowed' : '',
