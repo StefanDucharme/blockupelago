@@ -1037,9 +1037,14 @@
                       v-for="size in [6, 9, 12]"
                       :key="size"
                       @click="handleGridSizeChange(size)"
+                      :disabled="gameMode === 'archipelago'"
                       :class="[
                         'flex-1 px-3 py-2 text-xs rounded transition-colors',
-                        gridSize === size ? 'bg-blue-600 text-white' : 'bg-neutral-700/50 text-neutral-300 hover:bg-neutral-600/50',
+                        gridSize === size
+                          ? 'bg-blue-600 text-white'
+                          : gameMode === 'archipelago'
+                            ? 'bg-neutral-700/30 text-neutral-500 cursor-not-allowed'
+                            : 'bg-neutral-700/50 text-neutral-300 hover:bg-neutral-600/50',
                       ]"
                     >
                       {{ size }}x{{ size }}
@@ -1171,10 +1176,14 @@
                   <input
                     type="range"
                     v-model.number="pieceSizeRatio"
+                    :disabled="gameMode === 'archipelago'"
                     min="0"
                     max="1"
                     step="0.01"
-                    class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer slider"
+                    :class="[
+                      'w-full h-2 bg-neutral-700 rounded-lg appearance-none slider',
+                      gameMode === 'archipelago' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+                    ]"
                   />
                   <div class="flex justify-between text-2xs text-neutral-500 mt-1">
                     <span>Small (1-2 blocks)</span>
@@ -1191,10 +1200,14 @@
                   <input
                     type="range"
                     v-model.number="gemSpawnRatio"
+                    :disabled="gameMode === 'archipelago'"
                     min="0"
                     max="1"
                     step="0.05"
-                    class="w-full h-2 bg-neutral-700 rounded-lg appearance-none cursor-pointer slider"
+                    :class="[
+                      'w-full h-2 bg-neutral-700 rounded-lg appearance-none slider',
+                      gameMode === 'archipelago' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+                    ]"
                   />
                   <div class="flex justify-between text-2xs text-neutral-500 mt-1">
                     <span>Never</span>
