@@ -266,14 +266,14 @@ export function useBlockudoku() {
     // Place the piece
     grid.value = placePiece(grid.value, piece, row, col);
 
-    // Remove the piece from current pieces (find by reference or ID)
-    const index = currentPieces.value.findIndex((p) => p === piece || p.id === piece.id);
+    // Remove the piece from current pieces (find by exact reference only)
+    const index = currentPieces.value.findIndex((p) => p === piece);
     if (index > -1) {
       currentPieces.value = currentPieces.value.filter((_, i) => i !== index);
     }
 
-    // Also clear from held piece if it matches
-    if (heldPiece.value?.id === piece.id) {
+    // Also clear from held piece if it matches (by reference)
+    if (heldPiece.value === piece) {
       heldPiece.value = null;
     }
 
@@ -613,8 +613,8 @@ export function useBlockudoku() {
     const temp = heldPiece.value;
     heldPiece.value = piece;
 
-    // Remove piece from current pieces
-    const index = currentPieces.value.findIndex((p) => p === piece || p.id === piece.id);
+    // Remove piece from current pieces (by exact reference)
+    const index = currentPieces.value.findIndex((p) => p === piece);
     if (index > -1) {
       currentPieces.value = currentPieces.value.filter((_, i) => i !== index);
     }
@@ -624,31 +624,39 @@ export function useBlockudoku() {
       currentPieces.value = [...currentPieces.value, temp];
     }
 
+    // Generate new pieces if all pieces are gone (after swap)
+    if (currentPieces.value.length === 0) {
+      generateNewPieces();
+    }
+
     return true;
   }
 
   // Rotate a piece 90 degrees clockwise
   function rotatePiece(piece: Piece) {
-    // In free-play mode, consume a gem instead of ability uses
-    if (gameMode.value === 'free-play') {
-      if (totalGemsCollected.value <= 0) return;
-      totalGemsCollected.value--;
-    } else {
-      // In archipelago mode, use ability uses
-      if (rotateUses.value <= 0) return;
-      rotateUses.value--;
+    // Only charge for the first rotation of this piece
+    if (!piece.hasBeenRotated) {
+      // In free-play mode, consume a gem instead of ability uses
+      if (gameMode.value === 'free-play') {
+        if (totalGemsCollected.value <= 0) return;
+        totalGemsCollected.value--;
+      } else {
+        // In archipelago mode, use ability uses
+        if (rotateUses.value <= 0) return;
+        rotateUses.value--;
+      }
     }
 
-    const rotatedPiece = applyRotation(piece);
+    const rotatedPiece = { ...applyRotation(piece), hasBeenRotated: true };
 
-    // Update the piece in currentPieces
-    const index = currentPieces.value.findIndex((p) => p.id === piece.id);
+    // Update the piece in currentPieces (by reference)
+    const index = currentPieces.value.findIndex((p) => p === piece);
     if (index !== -1) {
       currentPieces.value = [...currentPieces.value.slice(0, index), rotatedPiece, ...currentPieces.value.slice(index + 1)];
     }
 
     // Update held piece if it's the one being rotated
-    if (heldPiece.value?.id === piece.id) {
+    if (heldPiece.value === piece) {
       heldPiece.value = rotatedPiece;
     }
   }
