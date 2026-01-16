@@ -557,7 +557,7 @@
             </div>
           </div>
         </div>
-        <div class="flex flex-col sm:flex-row gap-0.5 sm:gap-2">
+        <div class="flex flex-col sm:flex-row gap-0.5">
           <button
             @click="emit('rotate-piece', piece)"
             :disabled="!canRotatePiece(piece)"
