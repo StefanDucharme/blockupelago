@@ -7,8 +7,33 @@
   import { useArchipelago } from '~/composables/useArchipelago';
 
   // Tab management
-  type TabType = 'archipelago' | 'settings' | 'shop' | 'debug';
-  const activeTab = ref<TabType>('archipelago');
+  type MobileTab = 'game' | 'archipelago' | 'settings' | 'shop' | 'debug';
+  type RightTab = 'archipelago' | 'settings' | 'shop' | 'debug';
+  const activeTab = ref<RightTab>('archipelago');
+  const activeMobileTab = ref<MobileTab>('game');
+
+  // Track if we're on mobile
+  const isMobile = ref(false);
+
+  onMounted(() => {
+    const checkMobile = () => {
+      isMobile.value = window.innerWidth < 1024;
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    onUnmounted(() => {
+      window.removeEventListener('resize', checkMobile);
+    });
+  });
+
+  // Check if a tab is visible based on device type
+  const isTabVisible = (tab: RightTab) => {
+    if (isMobile.value) {
+      return activeMobileTab.value === tab;
+    }
+    return activeTab.value === tab;
+  };
 
   const {
     grid,
@@ -218,43 +243,60 @@
 
 <template>
   <div class="h-screen bg-neutral-950 text-neutral-100 flex flex-col overflow-hidden">
-    <!-- Main Container -->
-    <div class="flex flex-1 min-h-0 overflow-hidden">
-      <!-- LEFT: Main Game Area -->
-      <div class="flex-1 px-6 py-4 overflow-y-auto">
-        <!-- Header -->
+    <!-- Mobile Tab Bar (visible only on mobile) -->
+    <div class="lg:hidden flex border-b border-neutral-700/50 bg-neutral-900/95 shrink-0 overflow-x-auto">
+      <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'game' }" @click="activeMobileTab = 'game'">
+        <span class="text-xs">🎮</span>
+      </button>
+      <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'archipelago' }" @click="activeMobileTab = 'archipelago'">
+        <span class="text-xs">🏝️</span>
+      </button>
+      <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'settings' }" @click="activeMobileTab = 'settings'">
+        <span class="text-xs">⚙️</span>
+      </button>
+      <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'shop' }" @click="activeMobileTab = 'shop'">
+        <span class="text-xs">🛒</span>
+      </button>
+      <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'debug' }" @click="activeMobileTab = 'debug'">
+        <span class="text-xs">🐛</span>
+      </button>
+    </div>
 
+    <!-- Main Container -->
+    <div class="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
+      <!-- LEFT: Main Game Area - hidden on mobile when not on game tab -->
+      <div class="flex-1 px-3 sm:px-6 py-2 sm:py-4 min-h-0 overflow-y-auto" :class="{ 'hidden lg:block': activeMobileTab !== 'game' }">
         <!-- Stats Panel -->
-        <div class="mb-6 p-4 bg-neutral-800/30 rounded-lg border border-neutral-700">
-          <div class="flex items-center justify-between mb-2">
-            <h2 class="text-lg font-semibold">Blockupelago</h2>
+        <div class="mb-2 sm:mb-4 p-2 sm:p-3 bg-neutral-800/30 rounded-lg border border-neutral-700">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <h2 class="text-sm sm:text-base font-semibold whitespace-nowrap">Blockupelago</h2>
+            <div class="flex items-center gap-2 sm:gap-3 flex-wrap text-xs">
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-blue-400">{{ totalScore }}</span>
+                <span class="text-neutral-400">Score</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-green-400">{{ totalLinesCleared }}</span>
+                <span class="text-neutral-400">Lines</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-purple-400">{{ totalBoxesCleared }}</span>
+                <span class="text-neutral-400">Boxes</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-yellow-400">{{ totalCombos }}</span>
+                <span class="text-neutral-400">Combos</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-orange-400">{{ totalPiecesPlaced }}</span>
+                <span class="text-neutral-400">Pieces</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-pink-400">{{ totalGemsCollected }}</span>
+                <span class="text-neutral-400">Gems</span>
+              </div>
+            </div>
             <ThemePicker />
-          </div>
-          <div class="grid grid-cols-2 md:grid-cols-6 gap-4 text-center">
-            <div>
-              <div class="text-2xl font-bold text-blue-400">{{ totalScore }}</div>
-              <div class="text-sm text-neutral-400">Total Score</div>
-            </div>
-            <div>
-              <div class="text-2xl font-bold text-green-400">{{ totalLinesCleared }}</div>
-              <div class="text-sm text-neutral-400">Lines</div>
-            </div>
-            <div>
-              <div class="text-2xl font-bold text-purple-400">{{ totalBoxesCleared }}</div>
-              <div class="text-sm text-neutral-400">Boxes</div>
-            </div>
-            <div>
-              <div class="text-2xl font-bold text-yellow-400">{{ totalCombos }}</div>
-              <div class="text-sm text-neutral-400">Combos</div>
-            </div>
-            <div>
-              <div class="text-2xl font-bold text-orange-400">{{ totalPiecesPlaced }}</div>
-              <div class="text-sm text-neutral-400">Pieces</div>
-            </div>
-            <div>
-              <div class="text-2xl font-bold text-pink-400">{{ totalGemsCollected }}</div>
-              <div class="text-sm text-neutral-400">Gems</div>
-            </div>
           </div>
         </div>
 
@@ -283,20 +325,25 @@
         />
       </div>
 
-      <!-- RIGHT: Sidebar with Tabs -->
-      <div class="w-1/3 shrink-0 bg-neutral-900/95 backdrop-blur-lg border-l border-neutral-700 flex flex-col min-h-0">
-        <!-- Tab Bar -->
-        <div class="flex border-b border-neutral-700/50 shrink-0 overflow-x-auto">
-          <button class="tab-button" :class="{ active: activeTab === 'archipelago' }" @click="activeTab = 'archipelago'">Archipelago</button>
-          <button class="tab-button" :class="{ active: activeTab === 'settings' }" @click="activeTab = 'settings'">Settings</button>
-          <button class="tab-button" :class="{ active: activeTab === 'shop' }" @click="activeTab = 'shop'">Shop</button>
-          <button class="tab-button" :class="{ active: activeTab === 'debug' }" @click="activeTab = 'debug'">Debug</button>
+      <!-- RIGHT: Sidebar with Tabs - hidden on mobile when game tab active -->
+      <div
+        class="w-full lg:w-1/3 shrink-0 bg-neutral-900/95 backdrop-blur-lg border-t lg:border-t-0 lg:border-l border-neutral-700 flex flex-col min-h-0"
+        :class="{ 'hidden lg:flex': activeMobileTab === 'game' }"
+      >
+        <!-- Tab Bar (desktop only) -->
+        <div class="hidden lg:flex border-b border-neutral-700/50 shrink-0 overflow-x-auto">
+          <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'archipelago' }" @click="activeTab = 'archipelago'">
+            Archipelago
+          </button>
+          <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'settings' }" @click="activeTab = 'settings'">Settings</button>
+          <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'shop' }" @click="activeTab = 'shop'">Shop</button>
+          <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'debug' }" @click="activeTab = 'debug'">Debug</button>
         </div>
 
         <!-- Tab Content -->
-        <div class="p-4 flex-1 overflow-y-auto min-h-0">
+        <div class="p-3 sm:p-4 flex-1 overflow-y-auto min-h-0">
           <!-- ARCHIPELAGO TAB -->
-          <div v-if="activeTab === 'archipelago'" class="space-y-6">
+          <div v-if="isTabVisible('archipelago')" class="space-y-6">
             <div>
               <h2 class="font-semibold text-neutral-100 mb-1">Archipelago Connection</h2>
               <p class="text-xs text-neutral-400">Connect to multiplayer server</p>
@@ -339,9 +386,7 @@
               </div>
 
               <div v-if="lastMessage" class="mt-4 p-3 bg-neutral-900/50 rounded-lg border border-neutral-600">
-                <div class="text-xs text-neutral-300">
-                  {{ lastMessage }}
-                </div>
+                <div class="text-xs text-neutral-300">{{ lastMessage }}</div>
               </div>
             </div>
           </div>
@@ -421,6 +466,7 @@
                     </div>
                     <div class="text-neutral-400 ml-5">{{ milestone.description }}</div>
                   </div>
+                  isTabVisible('shop')
                 </div>
               </div>
             </section>
@@ -465,7 +511,7 @@
           </div>
 
           <!-- DEBUG TAB -->
-          <div v-else-if="activeTab === 'debug'" class="space-y-6">
+          <div v-else-if="isTabVisible('debug')" class="space-y-6">
             <div>
               <h2 class="font-semibold text-neutral-100 mb-1">Debug Tools</h2>
               <p class="text-xs text-neutral-400">Development and testing</p>
@@ -523,24 +569,15 @@
 
     <!-- Bottom Footer/Status Bar -->
     <footer class="shrink-0 border-t border-neutral-700/50 bg-neutral-950/90 backdrop-blur-lg">
-      <div class="px-6 py-3">
-        <div class="flex items-center justify-between">
-          <!-- Left side: Status indicator -->
-          <div class="flex items-center gap-4">
-            <div class="flex items-center gap-2">
-              <span class="status-dot" :class="statusMeta.dot"></span>
-              <span class="text-neutral-400 text-sm">Archipelago</span>
-              <span :class="statusMeta.text" class="font-semibold text-sm">{{ statusMeta.label }}</span>
-            </div>
-            <div class="text-xs text-white/70 hidden lg:block">
-              Click and drag pieces onto the grid. Complete rows, columns, or 3x3 boxes to clear them
-            </div>
+      <div class="px-3 sm:px-6 py-2 sm:py-3">
+        <div class="flex items-center gap-2 sm:gap-4">
+          <div class="status-indicator shrink-0">
+            <span class="status-dot" :class="statusMeta.dot"></span>
+            <span class="text-neutral-400 font-medium text-xs sm:text-sm">Archipelago</span>
+            <span :class="statusMeta.text" class="font-semibold text-xs sm:text-sm">{{ statusMeta.label }}</span>
           </div>
-
-          <!-- Right side: Version info -->
-          <div class="text-xs text-neutral-400">
-            <span class="opacity-50">v0.1.0</span>
-          </div>
+          <div class="text-xs text-white/70 hidden lg:block truncate">Click and drag pieces onto the grid</div>
+          <div v-if="lastMessage" class="text-xs text-neutral-400 truncate ml-auto">{{ lastMessage }}</div>
         </div>
       </div>
     </footer>

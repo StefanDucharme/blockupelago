@@ -20,8 +20,8 @@ export function useBlockudoku() {
   const claimedMilestones = usePersistentRef<number[]>('blockudoku_claimed_milestones', []);
 
   // Game state
-  const gridSize = usePersistentRef('blockudoku_grid_size', 6);
-  const grid = usePersistentRef<BlockGrid>('blockudoku_grid', makeGrid(6, 6));
+  const gridSize = usePersistentRef('blockudoku_grid_size', 9);
+  const grid = usePersistentRef<BlockGrid>('blockudoku_grid', makeGrid(9, 9));
   const totalScore = usePersistentRef('blockudoku_total_score', 0);
 
   // Clearing animation state
