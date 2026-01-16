@@ -4,12 +4,14 @@ A web-based Blockudoku puzzle game with [Archipelago](https://archipelago.gg/) m
 
 ## Features
 
-- **Blockudoku Gameplay**: Place polyomino pieces on a 9x9 grid, clear rows/columns/boxes
-- **Archipelago Integration**: Connect to Archipelago multiworld servers to receive items and send checks
-- **Progressive Unlocks**: Start with limited Hint Visibility
-- **Resource System**: Manage lives and coins as you solve puzzles
-- **Difficulty Progression**: Start at 5x5 grids and unlock larger puzzles
-- **Shop System**: Spend coins on temporary hints and other powerups
+- **Blockudoku Gameplay**: Place polyomino pieces on a 9x9 grid, clear rows/columns/3x3 boxes to score points
+- **Archipelago Integration**: Connect to Archipelago multiworld servers to receive items and send location checks
+- **Progressive Piece Unlocks**: Start with basic pieces and unlock more complex shapes through Archipelago
+- **Ability System**: Unlock special abilities (Rotate, Undo, Remove Block, Hold) as you progress
+- **Score Multipliers**: Receive score boost items to increase your points
+- **Free Play Mode**: Play without restrictions with all pieces available and gem-based abilities
+- **Mobile Touch Support**: Optimized touch controls for mobile play with offset piece preview
+- **Theme Customization**: Multiple color themes to personalize your experience
 
 ## Prerequisites
 
@@ -83,19 +85,7 @@ copy apworld\blockupelago.yaml <ARCHIPELAGO_PATH>\Players\
 Or create `Players/blockupelago.yaml` with:
 
 ```yaml
-name: TestPlayer
-game: Blockupelago
-Blockupelago:
-  starting_lives: 3
-  starting_coins: 5
-  starting_hints: 1
-  coins_per_bundle: 5
-  extra_lives_in_pool: 5
-  hint_reveals_in_pool: 10
-  coin_bundles_in_pool: 15
-  cell_solves_in_pool: 3
-  goal_puzzles: 16
-  death_link: false
+see yaml file in apworld folder
 ```
 
 ### 4. Generate a Game
@@ -142,22 +132,22 @@ Open http://localhost:3000 in your browser.
 ### Game Options
 
 | Option                | Range   | Default | Description                        |
-|-----------------------|---------|---------|------------------------------------|
-| `starting_lives`      | 1-10    | 3       | Lives per puzzle                   |
-| `starting_coins`      | 0-50    | 5       | Starting coins                     |
-| `starting_hints`      | 0-5     | 1       | Hints revealed per puzzle          |
-| `coins_per_bundle`    | 1-50    | 5       | Coins per Coin Bundle item         |
-| `extra_lives_in_pool` | 0-50    | 5       | Extra Life items in pool           |
-| `hint_reveals_in_pool`| 0-50    | 10      | Hint Reveal items in pool          |
-| `coin_bundles_in_pool`| 0-50    | 15      | Coin Bundle items in pool          |
-| `cell_solves_in_pool` | 0-50    | 3       | Cell Solve items in pool           |
-| `goal_puzzles`        | 1-100   | 16      | Puzzles required to win            |
-| `death_link`          | true/false | false | Share deaths with other players    |
+|---------------BlockupelagoP1` (must match your YAML `name` field)
+   - **Password**: (leave empty unless you set one)
+3. Click **Connect**
 
-## Usage
+### Game Options
 
-### Free Play Mode
-By default, the game runs in Free Play mode with all features unlocked. You can adjust puzzle size, generate new puzzles, and play without any restrictions.
+| Option                | Range   | Default | Description                                  |
+|-----------------------|---------|---------|----------------------------------------------|
+| `starting_piece_slots`| 3-5     | 3       | Number of piece slots at game start          |
+| `starting_abilities`  | 0-10    | 0       | Starting uses for abilities                  |
+| `goal_score`          | 1000-100000 | 30000 | Score required to complete the game         |
+
+### Location Checks
+
+Blockupelago sends checks to Archipelago when you reach milestones:
+pieces unlocked. You can play continuously, collecting gems to use abilities, and tracking your high scores.
 
 ### Archipelago Mode
 1. Click the **Archipelago** tab in the right panel
@@ -169,20 +159,61 @@ By default, the game runs in Free Play mode with all features unlocked. You can 
 3. Click **Connect**
 
 In Archipelago Mode:
-- Features are locked until you receive them from other players
-- Complete puzzles to send checks to the multiworld
-- Resource settings come from your YAML configuration
-- Receive items from other players in your multiworld
+- Start with only 3 basic pieces (Tromino L, Tetromino T, Tetromino L)
+- Unlock additional piece types as you receive items from other players
+- Abilities (Rotate, Undo, Remove Block, Hold) are granted through items
+- Score multipliers stack to boost your point gains
+- Reach the goal score to complete your game and send victory
+- Switching modes resets all progress
 
 ### Items You Can Receive
-- **Hint Reveal** - See more row/column hints
-- **Extra Life** - Increase max lives
-- **Coin Bundle** - Get coins for the shop
-- **Random Cell Solve** - Auto-solve one cell
 
-### Controls
-- **Left Click**: Fill a cell
-- **Right Click**: Mark a cell with X
+**Piece Unlocks** (18 types):
+- Single Block, Domino I
+- Tromino I, Tromino L
+- Tetromino I, O, T, L, S
+- Pentomino I, L, P, U, W, Plus
+- 3x3 Corner, T-Shape, Cross
+
+**Abilities**:
+- **Rotate Ability** - Rotate pieces before placing
+- **Undo Ability** - Undo your last move
+- **Remove Block** - Remove a single block from the grid
+- **Hold Ability** - Hold a piece for later use
+
+**Upgrades**:
+- **4th Piece Slot** - Increase piece slots from 3 to 4
+- **5th Piece Slot** - Increase piece slots from 4 to 5
+- **Score Multiplier +10%** - Permanent 10% score boost
+- **Score Multiplier +25%** - Permanent 25% score boost
+- **Score Multiplier +50%** - Permanent 50% score boost
+
+### │   ├── BlockudokuBoard.vue    # Main game board
+│   │   ├── ScrollableGrid.vue     # Piece selection grid
+│   │   └── ThemePicker.vue        # Theme selector
+│   ├── composables/        # Vue composables
+│   │   ├── useArchipelago.ts      # AP connection & events
+│   │   ├── useArchipelagoItems.ts # Item/location definitions
+│   │   ├── useBlockudoku.ts       # Game logic
+│   │   ├── usePersistence.ts      # LocalStorage management
+│   │   └── useTheme.ts            # Theme system
+│   ├── pages/              # Page components
+│   │   └── index.vue              # Main game page
+│   ├── plugins/            # Nuxt plugins
+│   │   ├── archipelago.client.ts  # AP client setup
+│   │   └── sleekplan.client.ts    # Feedback widget
+│   └── utils/              # Utility functions
+│       ├── blockudoku.ts          # Game rules & piece shapes
+│       └── themes.ts              # Theme definitions
+├── apworld/                # Archipelago world files
+│   ├── blockupelago/       # Python world implementation
+│   │   ├── __init__.py            # World definition
+│   │   ├── Items.py               # Item definitions
+│   │   ├── Locations.py           # Location checks
+│   │   ├── Options.py             # YAML options
+│   │   └── Regions.py             # Region setup
+│   ├── build_apworld.py    # APWorld packaging script
+│   └── Blockupelago.yamll with X
 - **Shift + Click** or **Click again**: Erase a cell
 
 ## Development
