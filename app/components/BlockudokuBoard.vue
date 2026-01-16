@@ -240,7 +240,7 @@
 <template>
   <div class="flex flex-col items-center gap-6 p-4">
     <!-- Score and Controls -->
-    <div class="flex items-center justify-between w-full max-w-2xl">
+    <div class="flex items-center justify-between w-full max-w-2xl min-h-[40px]">
       <div class="text-2xl font-bold">
         <span v-if="scoreMultiplier > 1" class="text-sm text-green-400"> (×{{ scoreMultiplier.toFixed(1) }}) </span>
       </div>
@@ -263,7 +263,9 @@
     </div>
 
     <!-- Game Over Message -->
-    <div v-if="isGameOver" class="text-2xl font-bold text-red-500 animate-pulse">Game Over! No valid moves remaining.</div>
+    <div class="min-h-[32px] flex items-center justify-center">
+      <div v-if="isGameOver" class="text-2xl font-bold text-red-500 animate-pulse">Game Over! No valid moves remaining.</div>
+    </div>
 
     <!-- Game Grid -->
     <div
@@ -301,7 +303,7 @@
         <div
           v-if="heldPiece"
           :class="[
-            'p-4 rounded-lg transition-all w-22 h-22 flex items-center justify-center cursor-grab active:cursor-grabbing',
+            'p-4 rounded-lg transition-all w-[150px] h-[150px] flex items-center justify-center cursor-grab active:cursor-grabbing',
             selectedPiece === heldPiece ? 'bg-blue-700 scale-110' : 'bg-gray-700/50 border-2 border-dashed border-gray-500',
             isDragging && draggedPiece === heldPiece ? 'opacity-50' : '',
           ]"
@@ -329,7 +331,7 @@
         </div>
         <div
           v-else
-          class="p-4 rounded-lg transition-all w-22 h-22 flex items-center justify-center bg-gray-700/50 border-2 border-dashed border-gray-500"
+          class="p-4 rounded-lg transition-all w-[150px] h-[150px] flex items-center justify-center bg-gray-700/50 border-2 border-dashed border-gray-500"
         >
           <div class="text-xs text-center text-neutral-500">Empty</div>
         </div>
@@ -337,43 +339,45 @@
 
       <!-- Current Pieces -->
       <div class="flex gap-4">
-        <div v-for="(piece, idx) in currentPieces" :key="`piece-${idx}-${piece.id}`" data-piece-container class="flex flex-col gap-2">
-          <div
-            :class="[
-              'p-4 rounded-lg cursor-grab active:cursor-grabbing transition-all touch-none',
-              selectedPiece === piece ? 'bg-blue-700 scale-110' : 'bg-gray-700 hover:bg-gray-600',
-              isDragging && draggedPiece === piece ? 'opacity-50' : '',
-            ]"
-            @click="selectPiece(piece)"
-            @mousedown="(e) => handleDragStart(e, piece)"
-            @touchstart="(e) => handleDragStart(e, piece)"
-          >
-            <div class="flex flex-col items-center gap-2">
-              <div
-                class="grid gap-0.5"
-                :style="{
-                  gridTemplateColumns: `repeat(${piece.shape[0]?.length || 0}, 20px)`,
-                  gridTemplateRows: `repeat(${piece.shape.length}, 20px)`,
-                }"
-              >
-                <div v-for="(row, r) in piece.shape" :key="`piece-row-${r}`" class="contents">
-                  <div
-                    v-for="(cell, c) in row"
-                    :key="`piece-cell-${r}-${c}`"
-                    :class="cell === 1 ? 'bg-current' : 'bg-transparent'"
-                    :style="{ color: piece.color }"
-                    class="rounded-sm"
-                  />
+        <div v-for="(piece, idx) in currentPieces" :key="`piece-${idx}-${piece.id}`" data-piece-container class="flex flex-col gap-2 w-[150px]">
+          <div class="flex flex-col items-center">
+            <div
+              :class="[
+                'p-4 rounded-lg cursor-grab active:cursor-grabbing transition-all touch-none w-[150px] h-[150px]',
+                selectedPiece === piece ? 'bg-blue-700 scale-110' : 'bg-gray-700 hover:bg-gray-600',
+                isDragging && draggedPiece === piece ? 'opacity-50' : '',
+              ]"
+              @click="selectPiece(piece)"
+              @mousedown="(e) => handleDragStart(e, piece)"
+              @touchstart="(e) => handleDragStart(e, piece)"
+            >
+              <div class="flex items-center justify-center w-full h-full">
+                <div
+                  class="grid gap-0.5"
+                  :style="{
+                    gridTemplateColumns: `repeat(${piece.shape[0]?.length || 0}, 20px)`,
+                    gridTemplateRows: `repeat(${piece.shape.length}, 20px)`,
+                  }"
+                >
+                  <div v-for="(row, r) in piece.shape" :key="`piece-row-${r}`" class="contents">
+                    <div
+                      v-for="(cell, c) in row"
+                      :key="`piece-cell-${r}-${c}`"
+                      :class="cell === 1 ? 'bg-current' : 'bg-transparent'"
+                      :style="{ color: piece.color }"
+                      class="rounded-sm"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-          <div class="flex gap-2">
+          <div class="flex gap-2 h-[32px]">
             <button
               @click="emit('rotate-piece', piece)"
               :disabled="rotateUses <= 0"
               :class="[
-                'flex-1 px-2 py-1 text-xs rounded transition-colors',
+                'flex-1 px-2 py-1 text-xs rounded transition-colors whitespace-nowrap',
                 rotateUses > 0 ? 'bg-blue-600/50 hover:bg-blue-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
               ]"
             >
@@ -383,7 +387,7 @@
               @click="emit('hold-piece', piece)"
               :disabled="holdUses <= 0"
               :class="[
-                'flex-1 px-2 py-1 text-xs rounded transition-colors',
+                'flex-1 px-2 py-1 text-xs rounded transition-colors whitespace-nowrap',
                 holdUses > 0 ? 'bg-purple-600/50 hover:bg-purple-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
               ]"
             >
