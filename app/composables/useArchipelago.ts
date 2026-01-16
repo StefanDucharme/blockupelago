@@ -154,7 +154,12 @@ export function useArchipelago() {
     if (now - lastDeathTime.value < DEATH_LINK_COOLDOWN_MS) return;
 
     addLogMessage(`☠️ Death Link from ${source}: ${cause}`, 'error');
-    // TODO: Handle death link in Blockudoku (e.g., end current game)
+    // Death Link handling: In Blockudoku, this triggers a game over
+    // The actual game state is managed by useBlockudoku composable
+    // Emit a global event or call a callback that the game can listen to
+    if (import.meta.client) {
+      window.dispatchEvent(new CustomEvent('blockudoku:deathlink', { detail: { source, cause } }));
+    }
   }
 
   // Send a Death Link to other players
