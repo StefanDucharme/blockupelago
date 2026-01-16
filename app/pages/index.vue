@@ -5,7 +5,8 @@
   import { useBlockudoku } from '~/composables/useBlockudoku';
   import { useArchipelagoItems } from '~/composables/useArchipelagoItems';
   import { useArchipelago } from '~/composables/useArchipelago';
-  import { ALL_PIECES } from '~/utils/blockudoku';
+  import { clearAllPersistence } from '~/composables/usePersistence';
+  import { ALL_PIECES, STARTER_PIECE_IDS } from '~/utils/blockudoku';
 
   // Tab management
   type MobileTab = 'game' | 'archipelago' | 'checks' | 'chat' | 'settings' | 'shop' | 'debug';
@@ -61,6 +62,7 @@
     unlockedPieceIds,
     initGame,
     resetStats,
+    resetAllProgress,
     tryPlacePiece,
     undo,
     removeBlock,
@@ -76,6 +78,7 @@
     addHoldAbility,
     addScoreMultiplier,
     addPieceSlot,
+    reapplyArchipelagoItems,
   } = useBlockudoku();
 
   const {
@@ -107,6 +110,7 @@
     disconnect,
     autoReconnect,
     syncItems,
+    resetArchipelagoState,
     items,
     lastMessage,
     messageLog,
@@ -136,113 +140,121 @@
   });
 
   // Handle incoming Archipelago items
+  // Track the last processed item count (resets on page refresh to allow re-processing)
+  const lastProcessedItemCount = ref(0);
+
   watch(
     () => items.receivedItems.value,
-    (newItems, oldItems) => {
-      if (!newItems || !oldItems) return;
+    (newItems) => {
+      if (!newItems) return;
 
-      // Find newly received items
-      const oldCount = oldItems.length;
-      const newCount = newItems.length;
+      // Only process items we haven't seen before
+      const currentCount = newItems.length;
+      if (currentCount <= lastProcessedItemCount.value) {
+        // No new items, skip processing
+        return;
+      }
 
-      if (newCount > oldCount) {
-        for (let i = oldCount; i < newCount; i++) {
-          const itemId = newItems[i];
-          if (!itemId) continue;
+      // Process only the newly added items
+      for (let i = lastProcessedItemCount.value; i < currentCount; i++) {
+        const itemId = newItems[i];
+        if (!itemId) continue;
 
-          console.log('[DEBUG] Processing received item:', itemId, getItemName(itemId));
+        console.log('[DEBUG] Processing received item:', itemId, getItemName(itemId));
 
-          // Handle the item based on its ID
-          switch (itemId) {
-            // Piece unlocks
-            case AP_ITEMS.SINGLE_BLOCK:
-              unlockPiece('Single Block');
-              break;
-            case AP_ITEMS.DOMINO_I:
-              unlockPiece('Domino I');
-              break;
-            case AP_ITEMS.TROMINO_I:
-              unlockPiece('Tromino I');
-              break;
-            case AP_ITEMS.TROMINO_L:
-              unlockPiece('Tromino L');
-              break;
-            case AP_ITEMS.TETROMINO_I:
-              unlockPiece('Tetromino I');
-              break;
-            case AP_ITEMS.TETROMINO_O:
-              unlockPiece('Tetromino O');
-              break;
-            case AP_ITEMS.TETROMINO_T:
-              unlockPiece('Tetromino T');
-              break;
-            case AP_ITEMS.TETROMINO_L:
-              unlockPiece('Tetromino L');
-              break;
-            case AP_ITEMS.TETROMINO_S:
-              unlockPiece('Tetromino S');
-              break;
-            case AP_ITEMS.PENTOMINO_I:
-              unlockPiece('Pentomino I');
-              break;
-            case AP_ITEMS.PENTOMINO_L:
-              unlockPiece('Pentomino L');
-              break;
-            case AP_ITEMS.PENTOMINO_P:
-              unlockPiece('Pentomino P');
-              break;
-            case AP_ITEMS.PENTOMINO_U:
-              unlockPiece('Pentomino U');
-              break;
-            case AP_ITEMS.PENTOMINO_W:
-              unlockPiece('Pentomino W');
-              break;
-            case AP_ITEMS.PENTOMINO_PLUS:
-              unlockPiece('Pentomino Plus');
-              break;
-            case AP_ITEMS.CORNER_3X3:
-              unlockPiece('3x3 Corner');
-              break;
-            case AP_ITEMS.T_SHAPE_3X3:
-              unlockPiece('3x3 T-Shape');
-              break;
-            case AP_ITEMS.CROSS_3X3:
-              unlockPiece('3x3 Cross');
-              break;
+        // Handle the item based on its ID
+        switch (itemId) {
+          // Piece unlocks
+          case AP_ITEMS.SINGLE_BLOCK:
+            unlockPiece('Single Block');
+            break;
+          case AP_ITEMS.DOMINO_I:
+            unlockPiece('Domino I');
+            break;
+          case AP_ITEMS.TROMINO_I:
+            unlockPiece('Tromino I');
+            break;
+          case AP_ITEMS.TROMINO_L:
+            unlockPiece('Tromino L');
+            break;
+          case AP_ITEMS.TETROMINO_I:
+            unlockPiece('Tetromino I');
+            break;
+          case AP_ITEMS.TETROMINO_O:
+            unlockPiece('Tetromino O');
+            break;
+          case AP_ITEMS.TETROMINO_T:
+            unlockPiece('Tetromino T');
+            break;
+          case AP_ITEMS.TETROMINO_L:
+            unlockPiece('Tetromino L');
+            break;
+          case AP_ITEMS.TETROMINO_S:
+            unlockPiece('Tetromino S');
+            break;
+          case AP_ITEMS.PENTOMINO_I:
+            unlockPiece('Pentomino I');
+            break;
+          case AP_ITEMS.PENTOMINO_L:
+            unlockPiece('Pentomino L');
+            break;
+          case AP_ITEMS.PENTOMINO_P:
+            unlockPiece('Pentomino P');
+            break;
+          case AP_ITEMS.PENTOMINO_U:
+            unlockPiece('Pentomino U');
+            break;
+          case AP_ITEMS.PENTOMINO_W:
+            unlockPiece('Pentomino W');
+            break;
+          case AP_ITEMS.PENTOMINO_PLUS:
+            unlockPiece('Pentomino Plus');
+            break;
+          case AP_ITEMS.CORNER_3X3:
+            unlockPiece('3x3 Corner');
+            break;
+          case AP_ITEMS.T_SHAPE_3X3:
+            unlockPiece('3x3 T-Shape');
+            break;
+          case AP_ITEMS.CROSS_3X3:
+            unlockPiece('3x3 Cross');
+            break;
 
-            // Piece slots
-            case AP_ITEMS.PIECE_SLOT_4:
-            case AP_ITEMS.PIECE_SLOT_5:
-              addPieceSlot();
-              break;
+          // Piece slots
+          case AP_ITEMS.PIECE_SLOT_4:
+          case AP_ITEMS.PIECE_SLOT_5:
+            addPieceSlot();
+            break;
 
-            // Abilities
-            case AP_ITEMS.ROTATE_ABILITY:
-              addRotateAbility();
-              break;
-            case AP_ITEMS.UNDO_ABILITY:
-              addUndoAbility();
-              break;
-            case AP_ITEMS.REMOVE_BLOCK:
-              addRemoveBlock();
-              break;
-            case AP_ITEMS.HOLD_ABILITY:
-              addHoldAbility();
-              break;
+          // Abilities
+          case AP_ITEMS.ROTATE_ABILITY:
+            addRotateAbility();
+            break;
+          case AP_ITEMS.UNDO_ABILITY:
+            addUndoAbility();
+            break;
+          case AP_ITEMS.REMOVE_BLOCK:
+            addRemoveBlock();
+            break;
+          case AP_ITEMS.HOLD_ABILITY:
+            addHoldAbility();
+            break;
 
-            // Score multipliers
-            case AP_ITEMS.SCORE_MULT_10:
-              addScoreMultiplier(0.1);
-              break;
-            case AP_ITEMS.SCORE_MULT_25:
-              addScoreMultiplier(0.25);
-              break;
-            case AP_ITEMS.SCORE_MULT_50:
-              addScoreMultiplier(0.5);
-              break;
-          }
+          // Score multipliers
+          case AP_ITEMS.SCORE_MULT_10:
+            addScoreMultiplier(0.1);
+            break;
+          case AP_ITEMS.SCORE_MULT_25:
+            addScoreMultiplier(0.25);
+            break;
+          case AP_ITEMS.SCORE_MULT_50:
+            addScoreMultiplier(0.5);
+            break;
         }
       }
+
+      // Update the last processed count
+      lastProcessedItemCount.value = currentCount;
     },
     { deep: true },
   );
@@ -412,17 +424,45 @@
         archipelago: 'Archipelago',
       };
 
-      if (confirm(`Switch to ${modeNames[newMode]} mode? This will start a new game and reset your progress.`)) {
+      if (confirm(`Switch to ${modeNames[newMode]} mode? This will reset all progress and start a fresh game.`)) {
+        // Clear ALL persistence data (including Archipelago checks and items)
+        clearAllPersistence();
+
+        // Reset Archipelago state (item processing index)
+        resetArchipelagoState();
+
+        // Reset item processing counter
+        lastProcessedItemCount.value = 0;
+
+        // Set the new mode first (before init so it saves correctly)
         gameMode.value = newMode;
 
         // Sync archipelago mode flag
+        archipelagoMode.value = newMode === 'archipelago';
+
+        // Reset all game state
+        totalScore.value = 0;
+        totalLinesCleared.value = 0;
+        totalBoxesCleared.value = 0;
+        totalCombos.value = 0;
+        totalPiecesPlaced.value = 0;
+        totalGemsCollected.value = 0;
+        rotateUses.value = 0;
+        undoUses.value = 0;
+        removeBlockUses.value = 0;
+        holdUses.value = 0;
+        heldPiece.value = null;
+        scoreMultiplier.value = 1.0;
+        maxPieceSlots.value = 3;
+
+        // In archipelago mode, initialize with starter pieces; free-play gets all pieces
         if (newMode === 'archipelago') {
-          archipelagoMode.value = true;
+          unlockedPieceIds.value = [...STARTER_PIECE_IDS];
         } else {
-          archipelagoMode.value = false;
+          unlockedPieceIds.value = [];
         }
 
-        resetStats();
+        // Initialize the game with a fresh grid
         initGame();
       }
     }
@@ -438,6 +478,10 @@
       initGame();
       addLogMessage('Connected to Archipelago server', 'info');
     } else if (newStatus === 'connected' && oldStatus !== 'connected') {
+      // Reconnecting while already in archipelago mode - reapply items
+      if (gameMode.value === 'archipelago') {
+        reapplyArchipelagoItems(items.receivedItems.value);
+      }
       addLogMessage('Connected to Archipelago server', 'info');
     } else if (newStatus === 'disconnected' && oldStatus === 'connected') {
       addLogMessage('Disconnected from Archipelago server', 'info');
@@ -494,6 +538,19 @@
   function handleNewGame() {
     resetStats();
     initGame();
+  }
+
+  function handleResetAllProgress() {
+    if (confirm('This will permanently delete ALL progress including Archipelago items and stats. Are you sure?')) {
+      // Reset Archipelago state first
+      resetArchipelagoState();
+      // Reset item processing counter
+      lastProcessedItemCount.value = 0;
+      // Set archipelago mode to false (switching to free-play)
+      archipelagoMode.value = false;
+      // Then reset all game progress
+      resetAllProgress();
+    }
   }
 
   // Initialize game on mount
@@ -1047,7 +1104,7 @@
               <h3 class="section-heading">Actions</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3">
                 <button type="button" class="btn-secondary w-full" @click="handleNewGame()">New Game</button>
-                <button type="button" class="btn-destructive w-full" @click="handleNewGame()">Reset All Progress</button>
+                <button type="button" class="btn-destructive w-full" @click="handleResetAllProgress()">Reset All Progress</button>
               </div>
             </section>
 

@@ -12,7 +12,7 @@ import {
   canPlaceAnyPiece,
   generatePieces,
 } from '~/utils/blockudoku';
-import { usePersistentRef } from './usePersistence';
+import { usePersistentRef, clearAllPersistence } from './usePersistence';
 import {
   getScoreLocationId,
   getLineClearLocationId,
@@ -219,6 +219,35 @@ export function useBlockudoku() {
     }
 
     gridSize.value = 9;
+  }
+
+  // Reset ALL progress - clears all persistence including Archipelago data
+  function resetAllProgress() {
+    // Clear all localStorage data
+    clearAllPersistence();
+
+    // Reinitialize to defaults (will be saved to localStorage automatically)
+    totalScore.value = 0;
+    totalLinesCleared.value = 0;
+    totalBoxesCleared.value = 0;
+    totalCombos.value = 0;
+    totalPiecesPlaced.value = 0;
+    totalGemsCollected.value = 0;
+    heldPiece.value = null;
+    gemCells.value = [];
+    rotateUses.value = 0;
+    undoUses.value = 0;
+    removeBlockUses.value = 0;
+    holdUses.value = 0;
+    scoreMultiplier.value = 1.0;
+    baseMultiplier.value = 1.0;
+    maxPieceSlots.value = 3;
+    unlockedPieceIds.value = [];
+    gridSize.value = 9;
+    gameMode.value = 'free-play';
+
+    // Reinitialize game
+    initGame();
   }
 
   // Place a piece
@@ -688,6 +717,7 @@ export function useBlockudoku() {
     // Actions
     initGame,
     resetStats,
+    resetAllProgress,
     tryPlacePiece,
     undo,
     removeBlock,

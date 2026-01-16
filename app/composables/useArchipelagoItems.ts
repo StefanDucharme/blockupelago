@@ -4,6 +4,7 @@
  * This composable manages all items received from and locations sent to Archipelago.
  */
 
+import { ref } from 'vue';
 import { usePersistentRef } from './usePersistence';
 
 // ============================================
@@ -152,7 +153,8 @@ export function getGemLocationId(gemNumber: number): number | null {
 export function useArchipelagoItems() {
   const archipelagoMode = usePersistentRef('blockudoku_ap_mode', false);
   const completedChecks = usePersistentRef<Set<number>>('blockudoku_ap_checks', new Set());
-  const receivedItems = usePersistentRef<number[]>('blockudoku_ap_items', []);
+  // Don't persist receivedItems - let Archipelago re-send on refresh
+  const receivedItems = ref<number[]>([]);
 
   // Ensure completedChecks is a Set
   function ensureChecksIsSet() {
@@ -205,13 +207,11 @@ export function useArchipelagoItems() {
     }
   }
 
-  // Receive an item from Archipelago
+  // Receive an item from Archipelago (add to non-persistent list)
   function receiveItem(itemId: number): boolean {
-    if (!receivedItems.value.includes(itemId)) {
-      receivedItems.value = [...receivedItems.value, itemId];
-      return true;
-    }
-    return false;
+    // Always add the item (duplicates indicate multiple copies)
+    receivedItems.value = [...receivedItems.value, itemId];
+    return true;
   }
 
   // Check if we have an item

@@ -394,6 +394,14 @@ export function useArchipelago() {
     }
   }
 
+  // Reset Archipelago state (called when clearing all progress)
+  function resetArchipelagoState() {
+    highestItemIndexProcessed = -1;
+    if (import.meta.client) {
+      localStorage.removeItem('blockupelago_ap_highestItemIndex');
+    }
+  }
+
   // Force resync all items from server (useful if local state was cleared)
   function syncItems() {
     if (status.value !== 'connected') {
@@ -402,10 +410,7 @@ export function useArchipelago() {
     }
 
     // Reset the highest processed index to force reprocessing
-    highestItemIndexProcessed = -1;
-    if (import.meta.client) {
-      localStorage.setItem('blockupelago_ap_highestItemIndex', '-1');
-    }
+    resetArchipelagoState();
 
     addLogMessage('Resyncing items from server...', 'info');
 
@@ -478,6 +483,7 @@ export function useArchipelago() {
     debugReceiveItem,
     debugCompleteCheck,
     syncItems,
+    resetArchipelagoState,
     say,
     // Expose items composable
     items,
