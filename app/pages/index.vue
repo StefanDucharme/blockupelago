@@ -231,7 +231,7 @@
     if (newMode !== gameMode.value) {
       const modeNames = {
         'free-play': 'Free Play',
-        'archipelago': 'Archipelago'
+        archipelago: 'Archipelago',
       };
 
       if (confirm(`Switch to ${modeNames[newMode]} mode? This will start a new game and reset your progress.`)) {
@@ -342,7 +342,7 @@
               <span
                 :class="[
                   'text-2xs px-2 py-0.5 rounded-full font-medium',
-                  gameMode === 'free-play' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'
+                  gameMode === 'free-play' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400',
                 ]"
               >
                 {{ gameMode === 'free-play' ? '🎮 Free Play' : '🏝️ Archipelago' }}
@@ -487,9 +487,7 @@
                   @click="handleGameModeChange('free-play')"
                   :class="[
                     'w-full text-left px-4 py-3 rounded-lg border-2 transition-all',
-                    gameMode === 'free-play'
-                      ? 'border-blue-500 bg-blue-500/20'
-                      : 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600'
+                    gameMode === 'free-play' ? 'border-blue-500 bg-blue-500/20' : 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600',
                   ]"
                 >
                   <div class="flex items-center justify-between">
@@ -510,8 +508,8 @@
                     gameMode === 'archipelago'
                       ? 'border-purple-500 bg-purple-500/20'
                       : status === 'connected'
-                        ? 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600'
-                        : 'border-neutral-800 bg-neutral-900/50 opacity-50 cursor-not-allowed'
+                      ? 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600'
+                      : 'border-neutral-800 bg-neutral-900/50 opacity-50 cursor-not-allowed',
                   ]"
                 >
                   <div class="flex items-center justify-between">
@@ -528,10 +526,12 @@
                 <!-- Mode Description -->
                 <div class="mt-4 p-3 bg-neutral-900/50 rounded text-xs text-neutral-400">
                   <template v-if="gameMode === 'free-play'">
-                    <span class="text-blue-400">Free Play:</span> All {{ ALL_PIECES.length }} pieces available! Collect gems to use undo, rotate, and hold abilities.
+                    <span class="text-blue-400">Free Play:</span> All {{ ALL_PIECES.length }} pieces available! Collect gems to use undo, rotate, and
+                    hold abilities.
                   </template>
                   <template v-else-if="gameMode === 'archipelago'">
-                    <span class="text-purple-400">Archipelago:</span> Unlock pieces and abilities through the Archipelago multiworld server. Gems are AP items!
+                    <span class="text-purple-400">Archipelago:</span> Unlock pieces and abilities through the Archipelago multiworld server. Gems are
+                    AP items!
                   </template>
                 </div>
               </div>
@@ -540,9 +540,6 @@
             <section class="space-y-4">
               <h3 class="section-heading">Game Info</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3">
-                <div v-if="gameMode === 'free-play'" class="mb-3 p-3 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-300">
-                  💎 Collect gems to use abilities! Each undo, rotate, or hold costs 1 gem.
-                </div>
                 <div>
                   <div class="flex items-center justify-between mb-2">
                     <span class="text-sm text-neutral-300">Grid Size</span>
@@ -583,25 +580,25 @@
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">🔄 Rotate Pieces</span>
-                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : (rotateUses > 0 ? 'text-green-400' : 'text-neutral-500')">
+                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : rotateUses > 0 ? 'text-green-400' : 'text-neutral-500'">
                     {{ gameMode === 'free-play' ? '1 gem' : rotateUses }}
                   </span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">↶ Undo</span>
-                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : (undoUses > 0 ? 'text-green-400' : 'text-neutral-500')">
+                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : undoUses > 0 ? 'text-green-400' : 'text-neutral-500'">
                     {{ gameMode === 'free-play' ? '1 gem' : undoUses }}
                   </span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">🗑️ Remove Block</span>
-                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : (removeBlockUses > 0 ? 'text-green-400' : 'text-neutral-500')">
+                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : removeBlockUses > 0 ? 'text-green-400' : 'text-neutral-500'">
                     {{ gameMode === 'free-play' ? '1 gem' : removeBlockUses }}
                   </span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">📦 Hold Piece</span>
-                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : (holdUses > 0 ? 'text-green-400' : 'text-neutral-500')">
+                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : holdUses > 0 ? 'text-green-400' : 'text-neutral-500'">
                     {{ gameMode === 'free-play' ? '1 gem' : holdUses }}
                   </span>
                 </div>

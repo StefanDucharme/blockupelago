@@ -367,7 +367,7 @@
       <div class="flex flex-col gap-3 items-center">
         <!-- Hold Piece Area -->
         <div class="flex flex-col gap-2">
-          <div class="text-xs text-center text-neutral-400">Held</div>
+          <div class="text-xs text-center text-neutral-400">📦 Held</div>
           <div
             v-if="heldPiece"
             :class="[
@@ -483,12 +483,11 @@
             @click="emit('hold-piece', piece)"
             :disabled="!canUseHold"
             :class="[
-              'flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors whitespace-nowrap flex items-center justify-center gap-1',
+              'flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors whitespace-nowrap',
               canUseHold ? 'bg-purple-600/50 hover:bg-purple-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
             ]"
           >
-            <span class="inline-block w-3 h-3 border-2 border-dashed border-current rounded-sm"></span>
-            <span>({{ holdDisplayText }})</span>
+            📦 ({{ holdDisplayText }})
           </button>
         </div>
       </div>
