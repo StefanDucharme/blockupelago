@@ -371,8 +371,8 @@
 
     dragPosition.value = { x: clientX, y: clientY };
 
-    // Check if hovering over hold area
-    if (holdAreaRef.value && draggedPiece.value && draggedPiece.value !== props.heldPiece) {
+    // Check if hovering over hold area (only if hold area is empty)
+    if (holdAreaRef.value && draggedPiece.value && draggedPiece.value !== props.heldPiece && !props.heldPiece) {
       const holdRect = holdAreaRef.value.getBoundingClientRect();
       const isOverHoldArea = clientX >= holdRect.left && clientX <= holdRect.right && clientY >= holdRect.top && clientY <= holdRect.bottom;
 
@@ -413,8 +413,8 @@
   function handleDragEnd(event: MouseEvent | TouchEvent) {
     if (!isDragging.value || !draggedPiece.value) return;
 
-    // Check if dropped on hold area
-    if (isHoveringHoldArea.value && canUseHold.value && draggedPiece.value !== props.heldPiece) {
+    // Check if dropped on hold area (only if hold area is empty)
+    if (isHoveringHoldArea.value && canUseHold.value && draggedPiece.value !== props.heldPiece && !props.heldPiece) {
       emit('hold-piece', draggedPiece.value);
     }
     // Try to place the piece at the hovered cell
