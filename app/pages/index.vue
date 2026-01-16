@@ -204,6 +204,13 @@
     { deep: true },
   );
 
+  // Helper function to handle grid size change with confirmation
+  function handleGridSizeChange(size: number) {
+    if (size !== gridSize.value && confirm('Changing grid size will start a new game. Continue?')) {
+      setGridSize(size);
+    }
+  }
+
   // Watch for milestone achievements and send checks
   watch([totalScore, totalLinesCleared, totalBoxesCleared, totalCombos, totalPiecesPlaced], () => {
     if (!archipelagoMode.value) return;
@@ -399,7 +406,7 @@
                     <button
                       v-for="size in [6, 9, 12]"
                       :key="size"
-                      @click="setGridSize(size)"
+                      @click="handleGridSizeChange(size)"
                       :class="[
                         'flex-1 px-3 py-2 text-xs rounded transition-colors',
                         gridSize === size ? 'bg-blue-600 text-white' : 'bg-neutral-700/50 text-neutral-300 hover:bg-neutral-600/50',
@@ -408,7 +415,6 @@
                       {{ size }}x{{ size }}
                     </button>
                   </div>
-                  <p class="text-xs text-neutral-500 mt-2">⚠️ Changes take effect on next new game</p>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-neutral-300">Score Multiplier</span>

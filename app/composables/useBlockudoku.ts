@@ -389,8 +389,10 @@ export function useBlockudoku() {
   // Set grid size (user preference - requires new game to take effect)
   function setGridSize(size: number) {
     if (size !== gridSize.value) {
+      resetStats();
       gridSize.value = size;
-      // Will take effect on next game
+      applyGridSize();
+      initGame();
     }
   }
 
