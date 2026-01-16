@@ -49,11 +49,11 @@ export function useBlockudoku() {
   }
 
   // Abilities
-  const canRotate = usePersistentRef('blockudoku_can_rotate', false); // Unlockable via milestone
+  const rotateUses = usePersistentRef('blockudoku_rotate_uses', 0);
   const canUndo = usePersistentRef('blockudoku_can_undo', false);
   const undoUses = usePersistentRef('blockudoku_undo_uses', 0);
   const removeBlockUses = usePersistentRef('blockudoku_remove_uses', 0);
-  const canHold = usePersistentRef('blockudoku_can_hold', false);
+  const holdUses = usePersistentRef('blockudoku_hold_uses', 0);
   const heldPiece = usePersistentRef<Piece | null>('blockudoku_held_piece', null);
 
   // Score multiplier (from AP items)
@@ -80,13 +80,43 @@ export function useBlockudoku() {
     return !canPlaceAnyPiece(grid.value, currentPieces.value);
   }
 
+  // Helper function to rotate a piece shape
+  function applyRotation(piece: Piece): Piece {
+    const oldShape = piece.shape;
+    const rows = oldShape.length;
+    const cols = oldShape[0]?.length || 0;
+
+    const newShape: BlockCell[][] = [];
+    for (let c = 0; c < cols; c++) {
+      const newRow: BlockCell[] = [];
+      for (let r = rows - 1; r >= 0; r--) {
+        newRow.push((oldShape[r]?.[c] || 0) as BlockCell);
+      }
+      newShape.push(newRow);
+    }
+
+    return { ...piece, shape: newShape };
+  }
+
   // Generate new pieces
   function generateNewPieces() {
     if (availablePieces.value.length === 0) {
       console.error('No pieces unlocked!');
       return;
     }
-    currentPieces.value = generatePieces(availablePieces.value, maxPieceSlots.value);
+    let pieces = generatePieces(availablePieces.value, maxPieceSlots.value);
+
+    // Apply random rotation to each piece
+    pieces = pieces.map((piece) => {
+      const rotations = Math.floor(Math.random() * 4); // 0-3 rotations
+      let rotatedPiece = piece;
+      for (let i = 0; i < rotations; i++) {
+        rotatedPiece = applyRotation(rotatedPiece);
+      }
+      return rotatedPiece;
+    });
+
+    currentPieces.value = pieces;
 
     // Random chance to spawn a gem on the grid
     if (Math.random() < gemSpawnChance) {
@@ -140,11 +170,11 @@ export function useBlockudoku() {
 
     // Reset progression and abilities
     claimedMilestones.value = [];
-    canRotate.value = false;
+    rotateUses.value = 0;
     canUndo.value = false;
     undoUses.value = 0;
     removeBlockUses.value = 0;
-    canHold.value = false;
+    holdUses.value = 0;
     scoreMultiplier.value = 1.0;
     maxPieceSlots.value = 3;
     gridSize.value = 6;
@@ -359,10 +389,10 @@ export function useBlockudoku() {
   // Unlock grid size (allow increasing or decreasing)
   function unlockGridSize(size: number) {
     if (size !== gridSize.value) {
+      const oldSize = gridSize.value;
       gridSize.value = size;
-      // Recreate grid with new size (copy old content if possible)
-      const newGrid = makeGrid(size, size);
-      const oldSize = grid.value.length;
+      const newGrid: BlockGrid = Array.from({ length: size }, () => Array(size).fill(0));
+      // Copy over existing cells
       for (let r = 0; r < Math.min(oldSize, size); r++) {
         for (let c = 0; c < Math.min(oldSize, size); c++) {
           const sourceRow = grid.value[r];
@@ -386,6 +416,14 @@ export function useBlockudoku() {
     removeBlockUses.value++;
   }
 
+  function addRotateAbility() {
+    rotateUses.value++;
+  }
+
+  function addHoldAbility() {
+    holdUses.value++;
+  }
+
   function addScoreMultiplier(amount: number) {
     scoreMultiplier.value += amount;
   }
@@ -402,7 +440,7 @@ export function useBlockudoku() {
 
   // Hold piece functionality
   function holdPiece(piece: Piece): boolean {
-    if (!canHold.value) return false;
+    if (holdUses.value <= 0) return false;
 
     // Swap the piece with the held piece
     const temp = heldPiece.value;
@@ -419,37 +457,28 @@ export function useBlockudoku() {
       currentPieces.value = [...currentPieces.value, temp];
     }
 
+    holdUses.value--;
     return true;
   }
 
   // Rotate a piece 90 degrees clockwise
   function rotatePiece(piece: Piece) {
-    if (!canRotate.value) return;
+    if (rotateUses.value <= 0) return;
 
-    const oldShape = piece.shape;
-    const rows = oldShape.length;
-    const cols = oldShape[0]?.length || 0;
-
-    // Create new shape rotated 90 degrees clockwise
-    const newShape: BlockCell[][] = [];
-    for (let c = 0; c < cols; c++) {
-      const newRow: BlockCell[] = [];
-      for (let r = rows - 1; r >= 0; r--) {
-        newRow.push((oldShape[r]?.[c] || 0) as BlockCell);
-      }
-      newShape.push(newRow);
-    }
+    const rotatedPiece = applyRotation(piece);
 
     // Update the piece in currentPieces
     const index = currentPieces.value.findIndex((p) => p.id === piece.id);
     if (index !== -1) {
-      currentPieces.value = [...currentPieces.value.slice(0, index), { ...piece, shape: newShape }, ...currentPieces.value.slice(index + 1)];
+      currentPieces.value = [...currentPieces.value.slice(0, index), rotatedPiece, ...currentPieces.value.slice(index + 1)];
     }
 
     // Update held piece if it's the one being rotated
     if (heldPiece.value?.id === piece.id) {
-      heldPiece.value = { ...piece, shape: newShape };
+      heldPiece.value = rotatedPiece;
     }
+
+    rotateUses.value--;
   }
 
   // Watch for grid size changes
@@ -462,10 +491,10 @@ export function useBlockudoku() {
   // Single Player Mode Milestones
   const MILESTONES = [
     { id: 1, score: 100, reward: { type: 'piece', value: 1 }, description: 'Unlock 1 new piece' },
-    { id: 2, score: 250, reward: { type: 'rotate', value: 1 }, description: 'Unlock Rotate ability' },
+    { id: 2, score: 250, reward: { type: 'rotate', value: 3 }, description: 'Unlock Rotate ability (3 uses)' },
     { id: 3, score: 500, reward: { type: 'piece', value: 1 }, description: 'Unlock 1 new piece' },
     { id: 4, score: 750, reward: { type: 'slot', value: 1 }, description: 'Unlock 4th piece slot' },
-    { id: 5, score: 1000, reward: { type: 'hold', value: 1 }, description: 'Unlock Hold Piece ability' },
+    { id: 5, score: 1000, reward: { type: 'hold', value: 3 }, description: 'Unlock Hold Piece (3 uses)' },
     { id: 6, score: 1500, reward: { type: 'piece', value: 2 }, description: 'Unlock 2 new pieces' },
     { id: 7, score: 2000, reward: { type: 'undo', value: 3 }, description: 'Unlock Undo (3 uses)' },
     { id: 8, score: 2500, reward: { type: 'removeBlock', value: 2 }, description: 'Remove Block (2 uses)' },
@@ -502,14 +531,14 @@ export function useBlockudoku() {
             undoUses.value += milestone.reward.value - 1;
             break;
           case 'rotate':
-            canRotate.value = true;
+            rotateUses.value += milestone.reward.value;
             break;
           case 'removeBlock':
             addRemoveBlock();
             removeBlockUses.value += milestone.reward.value - 1;
             break;
           case 'hold':
-            canHold.value = true;
+            holdUses.value += milestone.reward.value;
             break;
           case 'slot':
             addPieceSlot();
@@ -580,11 +609,11 @@ export function useBlockudoku() {
     totalGemsCollected,
 
     // Abilities
-    canRotate,
+    rotateUses,
     canUndo,
     undoUses,
     removeBlockUses,
-    canHold,
+    holdUses,
     heldPiece,
     scoreMultiplier,
     maxPieceSlots,
@@ -606,6 +635,8 @@ export function useBlockudoku() {
     unlockGridSize,
     addUndoAbility,
     addRemoveBlock,
+    addRotateAbility,
+    addHoldAbility,
     addScoreMultiplier,
     addPieceSlot,
     unlockedPieceIds,

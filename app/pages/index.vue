@@ -23,11 +23,11 @@
     totalCombos,
     totalPiecesPlaced,
     totalGemsCollected,
-    canRotate,
+    rotateUses,
     canUndo,
     undoUses,
     removeBlockUses,
-    canHold,
+    holdUses,
     heldPiece,
     rotatePiece,
     scoreMultiplier,
@@ -48,6 +48,8 @@
     unlockGridSize,
     addUndoAbility,
     addRemoveBlock,
+    addRotateAbility,
+    addHoldAbility,
     addScoreMultiplier,
     addPieceSlot,
   } = useBlockudoku();
@@ -269,8 +271,8 @@
           :undo-uses="undoUses"
           :remove-block-uses="removeBlockUses"
           :score-multiplier="scoreMultiplier"
-          :can-rotate="canRotate"
-          :can-hold="canHold"
+          :rotate-uses="rotateUses"
+          :hold-uses="holdUses"
           :held-piece="heldPiece"
           @place-piece="handlePlacePiece"
           @undo="undo"
@@ -374,8 +376,8 @@
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2 text-sm">
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">🔄 Rotate Pieces</span>
-                  <span :class="canRotate ? 'text-green-400' : 'text-neutral-500'">
-                    {{ canRotate ? '✓ Unlocked' : '✗ Locked' }}
+                  <span :class="rotateUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                    {{ rotateUses > 0 ? `✓ (${rotateUses} uses)` : '✗ No uses' }}
                   </span>
                 </div>
                 <div class="flex items-center justify-between">
@@ -387,13 +389,13 @@
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">🗑️ Remove Block</span>
                   <span :class="removeBlockUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ removeBlockUses > 0 ? `✓ (${removeBlockUses} uses)` : '✗ Locked' }}
+                    {{ removeBlockUses > 0 ? `✓ (${removeBlockUses} uses)` : '✗ No uses' }}
                   </span>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-neutral-300">📦 Hold Piece</span>
-                  <span :class="canHold ? 'text-green-400' : 'text-neutral-500'">
-                    {{ canHold ? '✓ Unlocked' : '✗ Locked' }}
+                  <span :class="holdUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                    {{ holdUses > 0 ? `✓ (${holdUses} uses)` : '✗ No uses' }}
                   </span>
                 </div>
               </div>
@@ -480,10 +482,10 @@
             <section class="space-y-3">
               <h3 class="section-heading">Grant Rewards</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2">
-                <button type="button" class="btn-secondary w-full text-xs" @click="canRotate = true">+ Unlock Rotate</button>
-                <button type="button" class="btn-secondary w-full text-xs" @click="addUndoAbility()">+ Undo Ability (1 use)</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addRotateAbility()">+ Rotate (1 use)</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addUndoAbility()">+ Undo (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addRemoveBlock()">+ Remove Block (1 use)</button>
-                <button type="button" class="btn-secondary w-full text-xs" @click="canHold = true">+ Unlock Hold</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addHoldAbility()">+ Hold (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="spawnGem()">💎 Spawn Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addPieceSlot()">+ Piece Slot</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addScoreMultiplier(0.1)">+ 0.1x Score Multiplier</button>
@@ -505,8 +507,8 @@
                   <span class="text-neutral-200">{{ isGameOver ? 'Yes' : 'No' }}</span>
                 </div>
                 <div class="flex justify-between">
-                  <span class="text-neutral-400">Can Rotate:</span>
-                  <span class="text-neutral-200">{{ canRotate ? 'Yes' : 'No' }}</span>
+                  <span class="text-neutral-400">Rotate Uses:</span>
+                  <span class="text-neutral-200">{{ rotateUses }}</span>
                 </div>
                 <div class="flex justify-between">
                   <span class="text-neutral-400">Unlocked Pieces:</span>

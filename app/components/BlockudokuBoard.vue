@@ -15,8 +15,8 @@
     undoUses: number;
     removeBlockUses: number;
     scoreMultiplier: number;
-    canRotate: boolean;
-    canHold: boolean;
+    rotateUses: number;
+    holdUses: number;
     heldPiece: Piece | null;
   }>();
 
@@ -297,7 +297,7 @@
     <div class="flex gap-4 items-start">
       <!-- Hold Piece Area -->
       <div class="flex flex-col gap-2">
-        <div class="text-xs text-center text-neutral-400">Hold (H)</div>
+        <div class="text-xs text-center text-neutral-400">Held</div>
         <div
           v-if="heldPiece"
           :class="[
@@ -329,14 +329,9 @@
         </div>
         <div
           v-else
-          :class="[
-            'p-4 rounded-lg transition-all w-22 h-22 flex items-center justify-center',
-            canHold ? 'bg-gray-700/50 border-2 border-dashed border-gray-500' : 'bg-gray-800/30 border-2 border-gray-700/30',
-            !canHold && 'opacity-50 cursor-not-allowed',
-          ]"
+          class="p-4 rounded-lg transition-all w-22 h-22 flex items-center justify-center bg-gray-700/50 border-2 border-dashed border-gray-500"
         >
-          <div v-if="!canHold" class="text-xs text-center text-neutral-600">Locked</div>
-          <div v-else class="text-xs text-center text-neutral-500">Empty</div>
+          <div class="text-xs text-center text-neutral-500">Empty</div>
         </div>
       </div>
 
@@ -375,18 +370,24 @@
           </div>
           <div class="flex gap-2">
             <button
-              v-if="canRotate"
               @click="emit('rotate-piece', piece)"
-              class="flex-1 px-2 py-1 text-xs bg-blue-600/50 hover:bg-blue-600/80 rounded transition-colors"
+              :disabled="rotateUses <= 0"
+              :class="[
+                'flex-1 px-2 py-1 text-xs rounded transition-colors',
+                rotateUses > 0 ? 'bg-blue-600/50 hover:bg-blue-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
+              ]"
             >
-              🔄 Rotate
+              🔄 ({{ rotateUses }})
             </button>
             <button
-              v-if="canHold"
               @click="emit('hold-piece', piece)"
-              class="flex-1 px-2 py-1 text-xs bg-purple-600/50 hover:bg-purple-600/80 rounded transition-colors"
+              :disabled="holdUses <= 0"
+              :class="[
+                'flex-1 px-2 py-1 text-xs rounded transition-colors',
+                holdUses > 0 ? 'bg-purple-600/50 hover:bg-purple-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
+              ]"
             >
-              Hold
+              🤝 ({{ holdUses }})
             </button>
           </div>
         </div>
