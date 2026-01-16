@@ -171,8 +171,17 @@
 
   // Calculate snapped position for drag preview
   const snappedDragPosition = computed(() => {
-    if (!isDragging.value || !draggedPiece.value || !gridRef.value || !hoveredCell.value) {
+    if (!isDragging.value || !draggedPiece.value || !gridRef.value) {
       return dragPosition.value;
+    }
+
+    // Apply touch offset when not hovering over grid
+    if (!hoveredCell.value) {
+      const touchOffset = isTouchDrag.value ? 80 : 0;
+      return {
+        x: dragPosition.value.x,
+        y: dragPosition.value.y - touchOffset,
+      };
     }
 
     const gridRect = gridRef.value.getBoundingClientRect();
