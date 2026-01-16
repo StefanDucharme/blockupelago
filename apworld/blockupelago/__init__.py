@@ -65,19 +65,20 @@ class BlockudokuWorld(World):
 
     def create_items(self) -> None:
         """Create all items for the item pool."""
+        from .Items import STARTER_PIECES
+
         item_count = 0
 
-        # Piece types - start with some, rest are progression
-        starting_piece_types = self.options.starting_piece_types.value
+        # Piece types - exclude starter pieces, add the rest to pool
         piece_type_items = [
             "Single Block", "Domino I", "Tromino I", "Tromino L",
             "Tetromino I", "Tetromino O", "Tetromino T", "Tetromino L", "Tetromino S",
             "Pentomino I", "Pentomino L", "Pentomino P", "Pentomino U", "Pentomino W", "Pentomino Plus",
-            "3x3 Block", "3x3 Corner", "3x3 T-Shape", "3x3 Cross"
+            "3x3 Corner", "3x3 T-Shape", "3x3 Cross"
         ]
-        # Skip the starting pieces, add the rest to pool
-        for i, piece_name in enumerate(piece_type_items):
-            if i >= starting_piece_types:
+        # Add all pieces except the starter pieces (Tromino L, Tetromino T, Tetromino L)
+        for piece_name in piece_type_items:
+            if piece_name not in STARTER_PIECES:
                 self.multiworld.itempool.append(self.create_item(piece_name))
                 item_count += 1
 
@@ -130,7 +131,6 @@ class BlockudokuWorld(World):
     def fill_slot_data(self) -> Dict[str, Any]:
         """Return slot data to be sent to the client."""
         return {
-            "starting_piece_types": self.options.starting_piece_types.value,
             "starting_piece_slots": self.options.starting_piece_slots.value,
             "starting_abilities": self.options.starting_abilities.value,
             "goal_score": self.options.goal_score.value,

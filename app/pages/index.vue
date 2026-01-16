@@ -8,22 +8,10 @@
   import { ALL_PIECES } from '~/utils/blockudoku';
 
   // Tab management
-  type MobileTab = 'game' | 'archipelago' | 'chat' | 'settings' | 'shop' | 'debug';
-  type RightTab = 'archipelago' | 'chat' | 'settings' | 'shop' | 'debug';
+  type MobileTab = 'game' | 'archipelago' | 'checks' | 'chat' | 'settings' | 'shop' | 'debug';
+  type RightTab = 'archipelago' | 'checks' | 'chat' | 'settings' | 'shop' | 'debug';
   const activeTab = ref<RightTab>('archipelago');
   const activeMobileTab = ref<MobileTab>('game');
-
-  // Archipelago message log
-  const messageLog = ref<Array<{ type: 'sent' | 'received' | 'system'; text: string; timestamp: Date }>>([]);
-
-  // Add message to log
-  function addLogMessage(type: 'sent' | 'received' | 'system', text: string) {
-    messageLog.value.push({ type, text, timestamp: new Date() });
-    // Keep only last 100 messages
-    if (messageLog.value.length > 100) {
-      messageLog.value.shift();
-    }
-  }
 
   // Track if we're on mobile
   const isMobile = ref(false);
@@ -90,7 +78,23 @@
     addPieceSlot,
   } = useBlockudoku();
 
-  const { archipelagoMode, checkLocation, AP_ITEMS, ITEM_NAME_TO_ID, getItemName } = useArchipelagoItems();
+  const {
+    archipelagoMode,
+    checkLocation,
+    isLocationCompleted,
+    completedChecks,
+    AP_ITEMS,
+    ITEM_NAME_TO_ID,
+    getItemName,
+    SCORE_MILESTONES,
+    LINE_CLEAR_MILESTONES,
+    BOX_CLEAR_MILESTONES,
+    PIECE_MILESTONES,
+    getScoreLocationId,
+    getLineClearLocationId,
+    getBoxClearLocationId,
+    getPieceLocationId,
+  } = useArchipelagoItems();
 
   const {
     host,
@@ -105,8 +109,11 @@
     syncItems,
     items,
     lastMessage,
+    messageLog,
+    addLogMessage,
     checkLocations,
     checkGoalCompletion,
+    debugCompleteCheck,
   } = useArchipelago();
 
   // Auto-reconnect on page load if previously connected
@@ -193,9 +200,6 @@
             case AP_ITEMS.PENTOMINO_PLUS:
               unlockPiece('Pentomino Plus');
               break;
-            case AP_ITEMS.BLOCK_3X3:
-              unlockPiece('3x3 Block');
-              break;
             case AP_ITEMS.CORNER_3X3:
               unlockPiece('3x3 Corner');
               break;
@@ -246,6 +250,10 @@
   // Debug: selected item for giving
   const debugSelectedItem = ref<number | ''>('');
 
+  // Debug: location check controls
+  const debugLocationCategory = ref<'score' | 'lines' | 'boxes' | 'pieces'>('score');
+  const debugLocationIndex = ref<number>(0);
+
   // Debug: Give an AP item
   function giveDebugItem() {
     if (!debugSelectedItem.value) return;
@@ -254,7 +262,7 @@
 
     // Simulate receiving the item
     items.receiveItem(itemId);
-    addLogMessage('system', `Debug: Gave ${itemName}`);
+    addLogMessage(`🎁 Debug: Gave ${itemName}`, 'info');
 
     // Manually trigger the item handling logic
     switch (itemId) {
@@ -303,9 +311,6 @@
         break;
       case AP_ITEMS.PENTOMINO_PLUS:
         unlockPiece('pentomino_plus');
-        break;
-      case AP_ITEMS.BLOCK_3X3:
-        unlockPiece('block_3x3');
         break;
       case AP_ITEMS.CORNER_3X3:
         unlockPiece('corner_3x3');
@@ -358,6 +363,40 @@
     }
   }
 
+  // Debug: Send a location check
+  async function debugSendCheck() {
+    const category = debugLocationCategory.value;
+    const index = debugLocationIndex.value;
+
+    let locationId: number | null = null;
+
+    if (category === 'score' && index < SCORE_MILESTONES.length) {
+      const score = SCORE_MILESTONES[index];
+      if (score !== undefined) {
+        locationId = getScoreLocationId(score);
+      }
+    } else if (category === 'lines' && index < LINE_CLEAR_MILESTONES.length) {
+      const clears = LINE_CLEAR_MILESTONES[index];
+      if (clears !== undefined) {
+        locationId = getLineClearLocationId(clears);
+      }
+    } else if (category === 'boxes' && index < BOX_CLEAR_MILESTONES.length) {
+      const clears = BOX_CLEAR_MILESTONES[index];
+      if (clears !== undefined) {
+        locationId = getBoxClearLocationId(clears);
+      }
+    } else if (category === 'pieces' && index < PIECE_MILESTONES.length) {
+      const pieces = PIECE_MILESTONES[index];
+      if (pieces !== undefined) {
+        locationId = getPieceLocationId(pieces);
+      }
+    }
+
+    if (locationId) {
+      await debugCompleteCheck(locationId);
+    }
+  }
+
   // Helper function to handle game mode change
   function handleGameModeChange(newMode: 'free-play' | 'archipelago') {
     // Don't allow archipelago mode if not connected
@@ -397,18 +436,18 @@
       archipelagoMode.value = true;
       resetStats();
       initGame();
-      addLogMessage('system', 'Connected to Archipelago server');
+      addLogMessage('Connected to Archipelago server', 'info');
     } else if (newStatus === 'connected' && oldStatus !== 'connected') {
-      addLogMessage('system', 'Connected to Archipelago server');
+      addLogMessage('Connected to Archipelago server', 'info');
     } else if (newStatus === 'disconnected' && oldStatus === 'connected') {
-      addLogMessage('system', 'Disconnected from Archipelago server');
+      addLogMessage('Disconnected from Archipelago server', 'info');
     }
   });
 
   // Watch for archipelago messages
   watch(lastMessage, (newMsg, oldMsg) => {
     if (newMsg && newMsg !== oldMsg) {
-      addLogMessage('received', newMsg);
+      addLogMessage(newMsg, 'chat');
     }
   });
 
@@ -428,7 +467,7 @@
     // Send all new checks to AP server
     if (newChecks.length > 0) {
       console.log('[AP] Sending checks:', newChecks);
-      addLogMessage('sent', `Sent ${newChecks.length} location check(s)`);
+      addLogMessage(`Sent ${newChecks.length} location check(s)`, 'info');
       checkLocations(newChecks);
     }
 
@@ -443,7 +482,7 @@
     const gemChecks = getCollectedGemChecks();
     if (gemChecks.length > 0) {
       console.log('[AP] Sending gem checks:', gemChecks);
-      addLogMessage('sent', `Collected ${gemChecks.length} gem(s)`);
+      addLogMessage(`Collected ${gemChecks.length} gem(s)`, 'info');
       checkLocations(gemChecks);
     }
   });
@@ -470,6 +509,14 @@
       </button>
       <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'archipelago' }" @click="activeMobileTab = 'archipelago'">
         <span class="text-xs">🏝️</span>
+      </button>
+      <button
+        v-if="gameMode === 'archipelago'"
+        class="tab-button flex-1 min-w-0 px-2"
+        :class="{ active: activeMobileTab === 'checks' }"
+        @click="activeMobileTab = 'checks'"
+      >
+        <span class="text-xs">✅</span>
       </button>
       <button
         v-if="gameMode === 'archipelago'"
@@ -512,6 +559,7 @@
               <div class="flex items-center gap-1">
                 <span class="font-bold text-blue-400">{{ totalScore }}</span>
                 <span class="text-neutral-400">Score</span>
+                <span v-if="scoreMultiplier > 1" class="text-green-400 font-semibold ml-0.5">(×{{ scoreMultiplier.toFixed(2) }})</span>
               </div>
               <div class="flex items-center gap-1">
                 <span class="font-bold text-green-400">{{ totalLinesCleared }}</span>
@@ -573,6 +621,14 @@
         <div class="hidden lg:flex border-b border-neutral-700/50 shrink-0 overflow-x-auto">
           <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'archipelago' }" @click="activeTab = 'archipelago'">
             Archipelago
+          </button>
+          <button
+            v-if="gameMode === 'archipelago'"
+            class="tab-button whitespace-nowrap"
+            :class="{ active: activeTab === 'checks' }"
+            @click="activeTab = 'checks'"
+          >
+            Checks
           </button>
           <button
             v-if="gameMode === 'archipelago'"
@@ -648,6 +704,84 @@
             </div>
           </div>
 
+          <!-- CHECKS TAB -->
+          <div v-else-if="isTabVisible('checks')" class="space-y-6">
+            <div>
+              <h2 class="font-semibold text-neutral-100 mb-1">Location Checks</h2>
+              <p class="text-xs text-neutral-400">Track your progress</p>
+            </div>
+
+            <!-- Score Milestones -->
+            <section class="space-y-3">
+              <h3 class="section-heading">Score Milestones</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4">
+                <div class="space-y-2">
+                  <div v-for="(score, idx) in SCORE_MILESTONES" :key="score" class="flex items-center justify-between text-xs">
+                    <span class="text-neutral-300">{{ score.toLocaleString() }} Points</span>
+                    <span v-if="isLocationCompleted(getScoreLocationId(score) || 0)" class="text-green-400">✓</span>
+                    <span v-else-if="totalScore >= score" class="text-yellow-400">⏳</span>
+                    <span v-else class="text-neutral-600">○</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Line Clears -->
+            <section class="space-y-3">
+              <h3 class="section-heading">Line Clears</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4">
+                <div class="grid grid-cols-2 gap-2">
+                  <div v-for="clears in LINE_CLEAR_MILESTONES" :key="clears" class="flex items-center justify-between text-xs">
+                    <span class="text-neutral-300">{{ clears }} Line{{ clears > 1 ? 's' : '' }}</span>
+                    <span v-if="isLocationCompleted(getLineClearLocationId(clears) || 0)" class="text-green-400">✓</span>
+                    <span v-else-if="totalLinesCleared >= clears" class="text-yellow-400">⏳</span>
+                    <span v-else class="text-neutral-600">○</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Box Clears -->
+            <section class="space-y-3">
+              <h3 class="section-heading">Box Clears</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4">
+                <div class="grid grid-cols-2 gap-2">
+                  <div v-for="clears in BOX_CLEAR_MILESTONES" :key="clears" class="flex items-center justify-between text-xs">
+                    <span class="text-neutral-300">{{ clears }} Box{{ clears > 1 ? 'es' : '' }}</span>
+                    <span v-if="isLocationCompleted(getBoxClearLocationId(clears) || 0)" class="text-green-400">✓</span>
+                    <span v-else-if="totalBoxesCleared >= clears" class="text-yellow-400">⏳</span>
+                    <span v-else class="text-neutral-600">○</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Pieces Placed -->
+            <section class="space-y-3">
+              <h3 class="section-heading">Pieces Placed</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4">
+                <div class="grid grid-cols-2 gap-2">
+                  <div v-for="pieces in PIECE_MILESTONES" :key="pieces" class="flex items-center justify-between text-xs">
+                    <span class="text-neutral-300">{{ pieces }} Piece{{ pieces > 1 ? 's' : '' }}</span>
+                    <span v-if="isLocationCompleted(getPieceLocationId(pieces) || 0)" class="text-green-400">✓</span>
+                    <span v-else-if="totalPiecesPlaced >= pieces" class="text-yellow-400">⏳</span>
+                    <span v-else class="text-neutral-600">○</span>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <!-- Summary -->
+            <div class="bg-neutral-800/30 rounded-sm p-4">
+              <div class="text-center space-y-2">
+                <div class="text-2xl font-bold text-green-400">
+                  {{ completedChecks.size || 0 }}
+                </div>
+                <div class="text-xs text-neutral-400">Total Checks Completed</div>
+              </div>
+            </div>
+          </div>
+
           <!-- CHAT TAB -->
           <div v-else-if="isTabVisible('chat')" class="space-y-6">
             <div>
@@ -663,24 +797,28 @@
                   :key="index"
                   class="p-3 rounded text-sm"
                   :class="{
-                    'bg-blue-500/10 border border-blue-500/30': message.type === 'sent',
-                    'bg-green-500/10 border border-green-500/30': message.type === 'received',
-                    'bg-neutral-700/30 border border-neutral-600/30': message.type === 'system',
+                    'bg-blue-500/10 border border-blue-500/30': message.type === 'chat',
+                    'bg-green-500/10 border border-green-500/30': message.type === 'item',
+                    'bg-red-500/10 border border-red-500/30': message.type === 'error',
+                    'bg-neutral-700/30 border border-neutral-600/30': message.type === 'info',
                   }"
                 >
                   <div class="flex items-start justify-between gap-2 mb-1">
                     <span
                       class="text-xs font-semibold"
                       :class="{
-                        'text-blue-400': message.type === 'sent',
-                        'text-green-400': message.type === 'received',
-                        'text-neutral-400': message.type === 'system',
+                        'text-blue-400': message.type === 'chat',
+                        'text-green-400': message.type === 'item',
+                        'text-red-400': message.type === 'error',
+                        'text-neutral-400': message.type === 'info',
                       }"
                     >
-                      {{ message.type === 'sent' ? '📤 Sent' : message.type === 'received' ? '📥 Received' : 'ℹ️ System' }}
+                      {{
+                        message.type === 'chat' ? '💬 Chat' : message.type === 'item' ? '📦 Item' : message.type === 'error' ? '❌ Error' : 'ℹ️ Info'
+                      }}
                     </span>
                     <span class="text-2xs text-neutral-500">
-                      {{ message.timestamp.toLocaleTimeString() }}
+                      {{ message.time.toLocaleTimeString() }}
                     </span>
                   </div>
                   <div class="text-neutral-200">{{ message.text }}</div>
@@ -944,6 +1082,39 @@
                 <button type="button" class="btn-secondary w-full text-xs" @click="giveDebugItem" :disabled="!debugSelectedItem">
                   🎁 Give Selected Item
                 </button>
+              </div>
+            </section>
+
+            <section v-if="status === 'connected'" class="space-y-3">
+              <h3 class="section-heading">Complete Location Checks</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3">
+                <p class="text-xs text-neutral-400">Manually complete location checks for testing</p>
+
+                <div class="space-y-2">
+                  <div class="flex gap-2">
+                    <select v-model="debugLocationCategory" class="flex-1 bg-neutral-800 text-neutral-200 px-3 py-2 rounded text-xs">
+                      <option value="score">Score Milestone</option>
+                      <option value="lines">Line Clears</option>
+                      <option value="boxes">Box Clears</option>
+                      <option value="pieces">Pieces Placed</option>
+                    </select>
+                    <select v-model="debugLocationIndex" class="flex-1 bg-neutral-800 text-neutral-200 px-3 py-2 rounded text-xs">
+                      <option v-if="debugLocationCategory === 'score'" v-for="(score, idx) in SCORE_MILESTONES" :key="idx" :value="idx">
+                        {{ score.toLocaleString() }} Points
+                      </option>
+                      <option v-if="debugLocationCategory === 'lines'" v-for="(clears, idx) in LINE_CLEAR_MILESTONES" :key="idx" :value="idx">
+                        {{ clears }} Lines
+                      </option>
+                      <option v-if="debugLocationCategory === 'boxes'" v-for="(clears, idx) in BOX_CLEAR_MILESTONES" :key="idx" :value="idx">
+                        {{ clears }} Boxes
+                      </option>
+                      <option v-if="debugLocationCategory === 'pieces'" v-for="(pieces, idx) in PIECE_MILESTONES" :key="idx" :value="idx">
+                        {{ pieces }} Pieces
+                      </option>
+                    </select>
+                  </div>
+                  <button @click="debugSendCheck" class="btn-secondary w-full text-xs">✓ Complete & Send Check</button>
+                </div>
               </div>
             </section>
 

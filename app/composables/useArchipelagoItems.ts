@@ -26,10 +26,9 @@ export const AP_ITEMS = {
   PENTOMINO_U: 8000013,
   PENTOMINO_W: 8000014,
   PENTOMINO_PLUS: 8000015,
-  BLOCK_3X3: 8000016,
-  CORNER_3X3: 8000017,
-  T_SHAPE_3X3: 8000018,
-  CROSS_3X3: 8000019,
+  CORNER_3X3: 8000016,
+  T_SHAPE_3X3: 8000017,
+  CROSS_3X3: 8000018,
 
   // Piece Slots (8002xxx)
   PIECE_SLOT_4: 8002001,
@@ -46,6 +45,9 @@ export const AP_ITEMS = {
   SCORE_MULT_25: 8004002,
   SCORE_MULT_50: 8004003,
 } as const;
+
+// Starter pieces that are always unlocked (should not be sent from AP)
+export const STARTER_PIECES = ['Tromino L', 'Tetromino T', 'Tetromino L'];
 
 // Map item names to item IDs
 export const ITEM_NAME_TO_ID: Record<string, number> = {
@@ -64,7 +66,6 @@ export const ITEM_NAME_TO_ID: Record<string, number> = {
   'Pentomino U': AP_ITEMS.PENTOMINO_U,
   'Pentomino W': AP_ITEMS.PENTOMINO_W,
   'Pentomino Plus': AP_ITEMS.PENTOMINO_PLUS,
-  '3x3 Block': AP_ITEMS.BLOCK_3X3,
   '3x3 Corner': AP_ITEMS.CORNER_3X3,
   '3x3 T-Shape': AP_ITEMS.T_SHAPE_3X3,
   '3x3 Cross': AP_ITEMS.CROSS_3X3,
@@ -177,16 +178,31 @@ export function useArchipelagoItems() {
     return completedChecks.value.has(locationId);
   }
 
-  // Enable Archipelago mode (locks features, resets state)
+  // Enable Archipelago mode (locks features, but preserves received items state)
   function enableArchipelagoMode() {
     archipelagoMode.value = true;
-    completedChecks.value = new Set();
-    receivedItems.value = [];
+    // Note: We don't clear receivedItems or completedChecks here anymore
+    // This allows state to persist through reconnections
   }
 
   // Disable Archipelago mode (free play)
   function disableArchipelagoMode() {
     archipelagoMode.value = false;
+    completedChecks.value = new Set();
+    receivedItems.value = [];
+
+    // Clear Archipelago-specific state
+    if (import.meta.client) {
+      // Clear abilities and multipliers from localStorage to start fresh in free-play
+      localStorage.removeItem('blockudoku_rotate_uses');
+      localStorage.removeItem('blockudoku_undo_uses');
+      localStorage.removeItem('blockudoku_remove_uses');
+      localStorage.removeItem('blockudoku_hold_uses');
+      localStorage.removeItem('blockudoku_score_multiplier');
+      localStorage.removeItem('blockudoku_base_multiplier');
+      localStorage.removeItem('blockudoku_max_pieces');
+      localStorage.removeItem('blockudoku_unlocked_pieces');
+    }
   }
 
   // Receive an item from Archipelago
@@ -203,6 +219,11 @@ export function useArchipelagoItems() {
     return receivedItems.value.includes(itemId);
   }
 
+  // Debug: Force complete a location check (for testing)
+  function debugCompleteLocation(locationId: number) {
+    checkLocation(locationId);
+  }
+
   return {
     archipelagoMode,
     completedChecks,
@@ -214,6 +235,7 @@ export function useArchipelagoItems() {
     disableArchipelagoMode,
     receiveItem,
     hasItem,
+    debugCompleteLocation,
 
     // Export constants
     AP_ITEMS,

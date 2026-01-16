@@ -3,6 +3,7 @@ import {
   type BlockGrid,
   type Piece,
   ALL_PIECES,
+  STARTER_PIECE_IDS,
   makeGrid,
   canPlacePiece,
   placePiece,
@@ -62,8 +63,7 @@ export function useBlockudoku() {
 
   // Initialize unlocked pieces if empty (for archipelago mode)
   if (unlockedPieceIds.value.length === 0 && gameMode.value === 'archipelago') {
-    const shuffled = [...ALL_PIECES].sort(() => Math.random() - 0.5);
-    unlockedPieceIds.value = shuffled.slice(0, 3).map((p) => p.id);
+    unlockedPieceIds.value = [...STARTER_PIECE_IDS];
   }
 
   // Abilities
@@ -75,6 +75,7 @@ export function useBlockudoku() {
 
   // Score multiplier (from AP items)
   const scoreMultiplier = usePersistentRef('blockudoku_score_multiplier', 1.0);
+  const baseMultiplier = usePersistentRef('blockudoku_base_multiplier', 1.0); // From items only
 
   // Piece slots
   const maxPieceSlots = usePersistentRef('blockudoku_max_pieces', 3);
@@ -181,6 +182,10 @@ export function useBlockudoku() {
 
   // Reset all stats (for new game)
   function resetStats() {
+    // Store received items before reset
+    const { receivedItems } = useArchipelagoItems();
+    const itemsToReapply = gameMode.value === 'archipelago' ? [...receivedItems.value] : [];
+
     totalScore.value = 0;
     totalLinesCleared.value = 0;
     totalBoxesCleared.value = 0;
@@ -197,21 +202,20 @@ export function useBlockudoku() {
       removeBlockUses.value = 0;
       holdUses.value = 0;
       scoreMultiplier.value = 1.0;
+      baseMultiplier.value = 1.0;
       maxPieceSlots.value = 3;
       // All pieces are available in free-play, no need to set unlockedPieceIds
       unlockedPieceIds.value = [];
     } else {
-      // Archipelago mode starts with limited resources from AP
-      rotateUses.value = 0;
-      undoUses.value = 0;
-      removeBlockUses.value = 0;
-      holdUses.value = 0;
-      scoreMultiplier.value = 1.0;
-      maxPieceSlots.value = 3;
+      // Archipelago mode: reset stats but keep items
+      // Combo bonus resets to 0
+      scoreMultiplier.value = baseMultiplier.value;
 
-      // Reset to 3 random unique pieces (for archipelago mode)
-      const shuffled = [...ALL_PIECES].sort(() => Math.random() - 0.5);
-      unlockedPieceIds.value = shuffled.slice(0, 3).map((p) => p.id);
+      // Reset to fixed starter pieces (for archipelago mode)
+      unlockedPieceIds.value = [...STARTER_PIECE_IDS];
+
+      // Reapply all received Archipelago items
+      reapplyArchipelagoItems(itemsToReapply);
     }
 
     gridSize.value = 9;
@@ -341,8 +345,8 @@ export function useBlockudoku() {
         // Count as combo and increase score multiplier if multiple clears
         if (clearResult.totalClears > 1) {
           totalCombos.value++;
-          // Increase score multiplier by 2% per combo (0.02)
-          scoreMultiplier.value += 0.02;
+          // Increase score multiplier by 2% per combo (0.02) on top of base
+          scoreMultiplier.value = baseMultiplier.value + totalCombos.value * 0.02;
         }
 
         // Calculate score
@@ -455,6 +459,83 @@ export function useBlockudoku() {
     grid.value = makeGrid(size, size);
   }
 
+  // Reapply all received Archipelago items (to persist through new games)
+  function reapplyArchipelagoItems(receivedItemIds: number[]) {
+    if (gameMode.value !== 'archipelago' || !receivedItemIds || receivedItemIds.length === 0) {
+      return;
+    }
+
+    console.log('[Blockudoku] Reapplying', receivedItemIds.length, 'Archipelago items after reset');
+
+    // Import item IDs
+    const { AP_ITEMS } = useArchipelagoItems();
+
+    // Count how many of each item type we have
+    const itemCounts = new Map<number, number>();
+    for (const itemId of receivedItemIds) {
+      itemCounts.set(itemId, (itemCounts.get(itemId) || 0) + 1);
+    }
+
+    // Apply piece unlocks (pieces are unique, no duplicates)
+    const pieceUnlocks = [
+      { id: AP_ITEMS.SINGLE_BLOCK, name: 'Single Block' },
+      { id: AP_ITEMS.DOMINO_I, name: 'Domino I' },
+      { id: AP_ITEMS.TROMINO_I, name: 'Tromino I' },
+      { id: AP_ITEMS.TROMINO_L, name: 'Tromino L' },
+      { id: AP_ITEMS.TETROMINO_I, name: 'Tetromino I' },
+      { id: AP_ITEMS.TETROMINO_O, name: 'Tetromino O' },
+      { id: AP_ITEMS.TETROMINO_T, name: 'Tetromino T' },
+      { id: AP_ITEMS.TETROMINO_L, name: 'Tetromino L' },
+      { id: AP_ITEMS.TETROMINO_S, name: 'Tetromino S' },
+      { id: AP_ITEMS.PENTOMINO_I, name: 'Pentomino I' },
+      { id: AP_ITEMS.PENTOMINO_L, name: 'Pentomino L' },
+      { id: AP_ITEMS.PENTOMINO_P, name: 'Pentomino P' },
+      { id: AP_ITEMS.PENTOMINO_U, name: 'Pentomino U' },
+      { id: AP_ITEMS.PENTOMINO_W, name: 'Pentomino W' },
+      { id: AP_ITEMS.PENTOMINO_PLUS, name: 'Pentomino Plus' },
+      { id: AP_ITEMS.CORNER_3X3, name: '3x3 Corner' },
+      { id: AP_ITEMS.T_SHAPE_3X3, name: '3x3 T-Shape' },
+      { id: AP_ITEMS.CROSS_3X3, name: '3x3 Cross' },
+    ];
+
+    for (const { id, name } of pieceUnlocks) {
+      if (itemCounts.has(id)) {
+        unlockPiece(name);
+      }
+    }
+
+    // Apply piece slots (count how many we should have)
+    const slot4Count = itemCounts.get(AP_ITEMS.PIECE_SLOT_4) || 0;
+    const slot5Count = itemCounts.get(AP_ITEMS.PIECE_SLOT_5) || 0;
+    const totalExtraSlots = slot4Count + slot5Count;
+    maxPieceSlots.value = Math.min(3 + totalExtraSlots, 5); // Base 3, max 5
+
+    // Apply abilities (set to count, not increment)
+    rotateUses.value = itemCounts.get(AP_ITEMS.ROTATE_ABILITY) || 0;
+    undoUses.value = itemCounts.get(AP_ITEMS.UNDO_ABILITY) || 0;
+    removeBlockUses.value = itemCounts.get(AP_ITEMS.REMOVE_BLOCK) || 0;
+    holdUses.value = itemCounts.get(AP_ITEMS.HOLD_ABILITY) || 0;
+
+    // Apply score multipliers (set to total, not increment)
+    const mult10Count = itemCounts.get(AP_ITEMS.SCORE_MULT_10) || 0;
+    const mult25Count = itemCounts.get(AP_ITEMS.SCORE_MULT_25) || 0;
+    const mult50Count = itemCounts.get(AP_ITEMS.SCORE_MULT_50) || 0;
+    const calculatedBase = 1.0 + mult10Count * 0.1 + mult25Count * 0.25 + mult50Count * 0.5;
+
+    // Set both base and current multiplier
+    baseMultiplier.value = calculatedBase;
+    scoreMultiplier.value = calculatedBase; // Reset to base (no combo bonus yet)
+
+    console.log('[Blockudoku] Reapplied items. Pieces:', unlockedPieceIds.value.length, 'Abilities:', {
+      rotate: rotateUses.value,
+      undo: undoUses.value,
+      remove: removeBlockUses.value,
+      hold: holdUses.value,
+      multiplier: scoreMultiplier.value,
+      slots: maxPieceSlots.value,
+    });
+  }
+
   // Add abilities
   function addUndoAbility() {
     undoUses.value++;
@@ -473,7 +554,8 @@ export function useBlockudoku() {
   }
 
   function addScoreMultiplier(amount: number) {
-    scoreMultiplier.value += amount;
+    baseMultiplier.value += amount;
+    scoreMultiplier.value = baseMultiplier.value + totalCombos.value * 0.02;
   }
 
   function addPieceSlot() {
@@ -600,6 +682,7 @@ export function useBlockudoku() {
     holdUses,
     heldPiece,
     scoreMultiplier,
+    baseMultiplier,
     maxPieceSlots,
 
     // Actions
@@ -615,6 +698,7 @@ export function useBlockudoku() {
 
     // Archipelago unlocks
     unlockPiece,
+    reapplyArchipelagoItems,
     setGridSize,
     getCollectedGemChecks,
     addUndoAbility,

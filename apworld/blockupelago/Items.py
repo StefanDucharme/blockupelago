@@ -27,9 +27,14 @@ class BlockudokuItem(Item):
 # Score Boosts:    8004001-8004003 (multipliers)
 # Event:           None (Victory)
 
+# Starter pieces that player begins with (EXCLUDED from item pool)
+STARTER_PIECES = {"Tromino L", "Tetromino T", "Tetromino L"}
+
 item_table: Dict[str, BlockudokuItemData] = {
 
     # === Piece Types (Progression - unlock different shapes) ===
+    # NOTE: Tromino L, Tetromino T, and Tetromino L are starter pieces
+    # and should NOT be added to the item pool
     "Single Block": BlockudokuItemData(code=8000001, classification=ItemClassification.progression),
     "Domino I": BlockudokuItemData(code=8000002, classification=ItemClassification.progression),
     "Tromino I": BlockudokuItemData(code=8000003, classification=ItemClassification.progression),
@@ -45,10 +50,9 @@ item_table: Dict[str, BlockudokuItemData] = {
     "Pentomino U": BlockudokuItemData(code=8000013, classification=ItemClassification.progression),
     "Pentomino W": BlockudokuItemData(code=8000014, classification=ItemClassification.progression),
     "Pentomino Plus": BlockudokuItemData(code=8000015, classification=ItemClassification.progression),
-    "3x3 Block": BlockudokuItemData(code=8000016, classification=ItemClassification.progression),
-    "3x3 Corner": BlockudokuItemData(code=8000017, classification=ItemClassification.progression),
-    "3x3 T-Shape": BlockudokuItemData(code=8000018, classification=ItemClassification.progression),
-    "3x3 Cross": BlockudokuItemData(code=8000019, classification=ItemClassification.progression),
+    "3x3 Corner": BlockudokuItemData(code=8000016, classification=ItemClassification.progression),
+    "3x3 T-Shape": BlockudokuItemData(code=8000017, classification=ItemClassification.progression),
+    "3x3 Cross": BlockudokuItemData(code=8000018, classification=ItemClassification.progression),
 
     # === Piece Slots (Useful) ===
     "4th Piece Slot": BlockudokuItemData(code=8002001, classification=ItemClassification.useful),
@@ -76,7 +80,7 @@ item_groups: Dict[str, Set[str]] = {
         "Single Block", "Domino I", "Tromino I", "Tromino L",
         "Tetromino I", "Tetromino O", "Tetromino T", "Tetromino L", "Tetromino S",
         "Pentomino I", "Pentomino L", "Pentomino P", "Pentomino U", "Pentomino W", "Pentomino Plus",
-        "3x3 Block", "3x3 Corner", "3x3 T-Shape", "3x3 Cross",
+        "3x3 Corner", "3x3 T-Shape", "3x3 Cross",
     },
     "Abilities": {
         "Rotate Ability", "Undo Ability", "Remove Block", "Hold Ability",

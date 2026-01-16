@@ -14,14 +14,6 @@ from Options import (
 )
 
 
-class StartingPieceTypes(Range):
-    """Number of different piece types you start with (unlocked)."""
-    display_name = "Starting Piece Types"
-    range_start = 3
-    range_end = 10
-    default = 5
-
-
 class StartingPieceSlots(Range):
     """Number of piece slots (pieces shown at once) you start with."""
     display_name = "Starting Piece Slots"
@@ -94,8 +86,11 @@ class DeathLink(Toggle):
 
 @dataclass
 class BlockudokuOptions(PerGameCommonOptions):
-    """Options for Blockudoku."""
-    starting_piece_types: StartingPieceTypes
+    """Options for Blockudoku.
+
+    Note: Starting pieces are now fixed (Tromino L, Tetromino T, Tetromino L)
+    and not configurable to ensure consistent game balance.
+    """
     starting_piece_slots: StartingPieceSlots
     starting_abilities: StartingAbilities
     rotate_uses_in_pool: RotateUsesInPool
