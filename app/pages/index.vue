@@ -1208,7 +1208,7 @@
           <div v-if="lastMessage" class="text-2xs sm:text-xs text-neutral-400 truncate ml-auto hidden sm:block">
             Latest Message: {{ lastMessage }}
           </div>
-          <div class="text-xs text-neutral-400 truncate ml-auto">v0.1.3</div>
+          <div class="text-xs text-neutral-400 truncate ml-auto">v0.1.4</div>
         </div>
       </div>
     </footer>
