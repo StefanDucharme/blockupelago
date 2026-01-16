@@ -5,47 +5,83 @@
   import { useBlockudoku } from '~/composables/useBlockudoku';
   import { useArchipelagoItems } from '~/composables/useArchipelagoItems';
   import { useArchipelago } from '~/composables/useArchipelago';
+  import { ALL_PIECES } from '~/utils/blockudoku';
 
   // Tab management
-  type TabType = 'archipelago' | 'settings' | 'shop' | 'debug';
-  const activeTab = ref<TabType>('archipelago');
+  type MobileTab = 'game' | 'archipelago' | 'settings' | 'shop' | 'debug';
+  type RightTab = 'archipelago' | 'settings' | 'shop' | 'debug';
+  const activeTab = ref<RightTab>('archipelago');
+  const activeMobileTab = ref<MobileTab>('game');
+
+  // Track if we're on mobile
+  const isMobile = ref(false);
+
+  onMounted(() => {
+    const checkMobile = () => {
+      isMobile.value = window.innerWidth < 1024;
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+
+    onUnmounted(() => {
+      window.removeEventListener('resize', checkMobile);
+    });
+  });
+
+  // Check if a tab is visible based on device type
+  const isTabVisible = (tab: RightTab) => {
+    if (isMobile.value) {
+      return activeMobileTab.value === tab;
+    }
+    return activeTab.value === tab;
+  };
 
   const {
     grid,
     gridSize,
-    score,
     totalScore,
     currentPieces,
     isGameOver,
+    clearingCells,
+    gemCells,
     totalLinesCleared,
     totalBoxesCleared,
     totalCombos,
     totalPiecesPlaced,
-    canRotate,
-    canUndo,
+    totalGemsCollected,
     rotateUses,
     undoUses,
     removeBlockUses,
-    hintUses,
+    holdUses,
+    heldPiece,
+    rotatePiece,
     scoreMultiplier,
+    gameMode,
+    maxPieceSlots,
+    unlockedPieceIds,
     initGame,
+    resetStats,
     tryPlacePiece,
     undo,
     removeBlock,
+    holdPiece,
+    spawnGem,
     checkMilestones,
     unlockPiece,
-    unlockGridSize,
-    addRotateAbility,
+    setGridSize,
+    getCollectedGemChecks,
     addUndoAbility,
     addRemoveBlock,
-    addHint,
+    addRotateAbility,
+    addHoldAbility,
     addScoreMultiplier,
     addPieceSlot,
   } = useBlockudoku();
 
   const { archipelagoMode, checkLocation, AP_ITEMS, ITEM_NAME_TO_ID } = useArchipelagoItems();
 
-  const { host, port, slot, password, useSecureConnection, status, connect, disconnect, items, lastMessage } = useArchipelago();
+  const { host, port, slot, password, useSecureConnection, status, connect, disconnect, items, lastMessage, checkLocations, checkGoalCompletion } =
+    useArchipelago();
 
   // Status indicator
   const statusMeta = computed(() => {
@@ -63,7 +99,7 @@
 
   // Handle incoming Archipelago items
   watch(
-    () => items.value,
+    () => items.receivedItems.value,
     (newItems, oldItems) => {
       if (!newItems || !oldItems) return;
 
@@ -73,45 +109,68 @@
 
       if (newCount > oldCount) {
         for (let i = oldCount; i < newCount; i++) {
-          const item = newItems[i];
-          if (!item) continue;
+          const itemId = newItems[i];
+          if (!itemId) continue;
 
-          // Handle the item based on its ID or name
-          const itemId = typeof item === 'number' ? item : ITEM_NAME_TO_ID[item.name];
-
+          // Handle the item based on its ID
           switch (itemId) {
             // Piece unlocks
             case AP_ITEMS.SINGLE_BLOCK:
+              unlockPiece('Single Block');
+              break;
             case AP_ITEMS.DOMINO_I:
+              unlockPiece('Domino I');
+              break;
             case AP_ITEMS.TROMINO_I:
+              unlockPiece('Tromino I');
+              break;
             case AP_ITEMS.TROMINO_L:
+              unlockPiece('Tromino L');
+              break;
             case AP_ITEMS.TETROMINO_I:
+              unlockPiece('Tetromino I');
+              break;
             case AP_ITEMS.TETROMINO_O:
+              unlockPiece('Tetromino O');
+              break;
             case AP_ITEMS.TETROMINO_T:
+              unlockPiece('Tetromino T');
+              break;
             case AP_ITEMS.TETROMINO_L:
+              unlockPiece('Tetromino L');
+              break;
             case AP_ITEMS.TETROMINO_S:
+              unlockPiece('Tetromino S');
+              break;
             case AP_ITEMS.PENTOMINO_I:
+              unlockPiece('Pentomino I');
+              break;
             case AP_ITEMS.PENTOMINO_L:
+              unlockPiece('Pentomino L');
+              break;
             case AP_ITEMS.PENTOMINO_P:
+              unlockPiece('Pentomino P');
+              break;
             case AP_ITEMS.PENTOMINO_U:
+              unlockPiece('Pentomino U');
+              break;
             case AP_ITEMS.PENTOMINO_W:
+              unlockPiece('Pentomino W');
+              break;
             case AP_ITEMS.PENTOMINO_PLUS:
+              unlockPiece('Pentomino Plus');
+              break;
             case AP_ITEMS.BLOCK_3X3:
+              unlockPiece('3x3 Block');
+              break;
             case AP_ITEMS.CORNER_3X3:
+              unlockPiece('3x3 Corner');
+              break;
             case AP_ITEMS.T_SHAPE_3X3:
+              unlockPiece('3x3 T-Shape');
+              break;
             case AP_ITEMS.CROSS_3X3:
-              unlockPiece(item.name);
-              break;
-
-            // Grid unlocks
-            case AP_ITEMS.GRID_6X6:
-              unlockGridSize(6);
-              break;
-            case AP_ITEMS.GRID_7X7:
-              unlockGridSize(7);
-              break;
-            case AP_ITEMS.GRID_9X9:
-              unlockGridSize(9);
+              unlockPiece('3x3 Cross');
               break;
 
             // Piece slots
@@ -121,17 +180,11 @@
               break;
 
             // Abilities
-            case AP_ITEMS.ROTATE_ABILITY:
-              addRotateAbility();
-              break;
             case AP_ITEMS.UNDO_ABILITY:
               addUndoAbility();
               break;
             case AP_ITEMS.REMOVE_BLOCK:
               addRemoveBlock();
-              break;
-            case AP_ITEMS.PLACEMENT_HINT:
-              addHint();
               break;
 
             // Score multipliers
@@ -144,6 +197,14 @@
             case AP_ITEMS.SCORE_MULT_50:
               addScoreMultiplier(0.5);
               break;
+
+            // Grid sizes (note: changing grid size requires new game)
+            case AP_ITEMS.GRID_6X6:
+            case AP_ITEMS.GRID_7X7:
+            case AP_ITEMS.GRID_9X9:
+              // Grid size items are received but don't automatically change the grid
+              // Player can manually select them from the settings
+              break;
           }
         }
       }
@@ -151,16 +212,87 @@
     { deep: true },
   );
 
+  // Helper function to handle grid size change with confirmation
+  function handleGridSizeChange(size: number) {
+    if (size !== gridSize.value && confirm('Changing grid size will start a new game. Continue?')) {
+      setGridSize(size);
+    }
+  }
+
+  // Helper function to handle game mode change
+  function handleGameModeChange(newMode: 'free-play' | 'archipelago') {
+    // Don't allow archipelago mode if not connected
+    if (newMode === 'archipelago' && status.value !== 'connected') {
+      alert('You must be connected to an Archipelago server to use Archipelago mode.');
+      return;
+    }
+
+    // Confirm mode change if it will reset progress
+    if (newMode !== gameMode.value) {
+      const modeNames = {
+        'free-play': 'Free Play',
+        archipelago: 'Archipelago',
+      };
+
+      if (confirm(`Switch to ${modeNames[newMode]} mode? This will start a new game and reset your progress.`)) {
+        gameMode.value = newMode;
+
+        // Sync archipelago mode flag
+        if (newMode === 'archipelago') {
+          archipelagoMode.value = true;
+        } else {
+          archipelagoMode.value = false;
+        }
+
+        resetStats();
+        initGame();
+      }
+    }
+  }
+
+  // Watch archipelago mode changes to enable archipelago game mode when connected
+  watch(archipelagoMode, (isArchipelago) => {
+    if (isArchipelago && gameMode.value !== 'archipelago' && status.value === 'connected') {
+      // User connected to AP, suggest switching to archipelago mode
+      if (confirm('Connected to Archipelago! Switch to Archipelago mode? This will start a new game.')) {
+        gameMode.value = 'archipelago';
+        resetStats();
+        initGame();
+      }
+    }
+  });
+
   // Watch for milestone achievements and send checks
   watch([totalScore, totalLinesCleared, totalBoxesCleared, totalCombos, totalPiecesPlaced], () => {
     if (!archipelagoMode.value) return;
 
     const locationIds = checkMilestones();
+    const newChecks: number[] = [];
     for (const locationId of locationIds) {
       if (checkLocation(locationId)) {
-        // Send to AP server (handled by useArchipelago)
-        console.log(`Sending check for location ${locationId}`);
+        // This is a new check, add to list to send
+        newChecks.push(locationId);
       }
+    }
+
+    // Send all new checks to AP server
+    if (newChecks.length > 0) {
+      console.log('[AP] Sending checks:', newChecks);
+      checkLocations(newChecks);
+    }
+
+    // Check goal completion
+    checkGoalCompletion(totalScore.value);
+  });
+
+  // Watch for gem collections and send checks
+  watch(totalGemsCollected, () => {
+    if (!archipelagoMode.value) return;
+
+    const gemChecks = getCollectedGemChecks();
+    if (gemChecks.length > 0) {
+      console.log('[AP] Sending gem checks:', gemChecks);
+      checkLocations(gemChecks);
     }
   });
 
@@ -169,6 +301,7 @@
   }
 
   function handleNewGame() {
+    resetStats();
     initGame();
   }
 
@@ -178,43 +311,70 @@
 
 <template>
   <div class="h-screen bg-neutral-950 text-neutral-100 flex flex-col overflow-hidden">
-    <!-- Main Container -->
-    <div class="flex flex-1 min-h-0 overflow-hidden">
-      <!-- LEFT: Main Game Area -->
-      <div class="flex-1 px-6 py-4 overflow-y-auto">
-        <!-- Header -->
-        <div class="mb-6">
-          <h1 class="text-4xl font-bold text-center mb-2">Blockupelago</h1>
-          <p class="text-center text-neutral-400">Place polyomino pieces to clear rows, columns, and 3x3 boxes!</p>
-        </div>
+    <!-- Mobile Tab Bar (visible only on mobile) -->
+    <div class="lg:hidden flex border-b border-neutral-700/50 bg-neutral-900/95 shrink-0 overflow-x-auto">
+      <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'game' }" @click="activeMobileTab = 'game'">
+        <span class="text-xs">🎮</span>
+      </button>
+      <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'archipelago' }" @click="activeMobileTab = 'archipelago'">
+        <span class="text-xs">🏝️</span>
+      </button>
+      <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'settings' }" @click="activeMobileTab = 'settings'">
+        <span class="text-xs">⚙️</span>
+      </button>
+      <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'shop' }" @click="activeMobileTab = 'shop'">
+        <span class="text-xs">🛒</span>
+      </button>
+      <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'debug' }" @click="activeMobileTab = 'debug'">
+        <span class="text-xs">🐛</span>
+      </button>
+    </div>
 
+    <!-- Main Container -->
+    <div class="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
+      <!-- LEFT: Main Game Area - hidden on mobile when not on game tab -->
+      <div class="flex-1 px-3 sm:px-6 py-2 sm:py-4 min-h-0 overflow-y-auto" :class="{ 'hidden lg:block': activeMobileTab !== 'game' }">
         <!-- Stats Panel -->
-        <div class="mb-6 p-4 bg-neutral-800/30 rounded-lg border border-neutral-700">
-          <div class="flex items-center justify-between mb-2">
-            <h2 class="text-lg font-semibold">Statistics</h2>
+        <div class="mb-2 sm:mb-4 p-2 sm:p-3 bg-neutral-800/30 rounded-lg border border-neutral-700">
+          <div class="flex items-center justify-between gap-2 flex-wrap">
+            <div class="flex items-center gap-2">
+              <h2 class="text-sm sm:text-base font-semibold whitespace-nowrap">Blockupelago</h2>
+              <span
+                :class="[
+                  'text-2xs px-2 py-0.5 rounded-full font-medium',
+                  gameMode === 'free-play' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400',
+                ]"
+              >
+                {{ gameMode === 'free-play' ? '🎮 Free Play' : '🏝️ Archipelago' }}
+              </span>
+            </div>
+            <div class="flex items-center gap-2 sm:gap-3 flex-wrap text-xs">
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-blue-400">{{ totalScore }}</span>
+                <span class="text-neutral-400">Score</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-green-400">{{ totalLinesCleared }}</span>
+                <span class="text-neutral-400">Lines</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-purple-400">{{ totalBoxesCleared }}</span>
+                <span class="text-neutral-400">Boxes</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-yellow-400">{{ totalCombos }}</span>
+                <span class="text-neutral-400">Combos</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-orange-400">{{ totalPiecesPlaced }}</span>
+                <span class="text-neutral-400">Pieces</span>
+              </div>
+              <div class="flex items-center gap-1">
+                <span class="font-bold text-pink-400">{{ totalGemsCollected }}</span>
+                <span class="text-neutral-400">Gems</span>
+              </div>
+            </div>
             <ThemePicker />
-          </div>
-          <div class="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
-            <div>
-              <div class="text-2xl font-bold text-blue-400">{{ totalScore.toLocaleString() }}</div>
-              <div class="text-sm text-neutral-400">Total Score</div>
-            </div>
-            <div>
-              <div class="text-2xl font-bold text-green-400">{{ totalLinesCleared }}</div>
-              <div class="text-sm text-neutral-400">Lines</div>
-            </div>
-            <div>
-              <div class="text-2xl font-bold text-purple-400">{{ totalBoxesCleared }}</div>
-              <div class="text-sm text-neutral-400">Boxes</div>
-            </div>
-            <div>
-              <div class="text-2xl font-bold text-yellow-400">{{ totalCombos }}</div>
-              <div class="text-sm text-neutral-400">Combos</div>
-            </div>
-            <div>
-              <div class="text-2xl font-bold text-orange-400">{{ totalPiecesPlaced }}</div>
-              <div class="text-sm text-neutral-400">Pieces</div>
-            </div>
           </div>
         </div>
 
@@ -224,33 +384,45 @@
           :grid-size="gridSize"
           :current-pieces="currentPieces"
           :is-game-over="isGameOver"
-          :score="score"
-          :can-undo="canUndo"
+          :total-score="totalScore"
+          :clearing-cells="clearingCells"
+          :gem-cells="gemCells"
           :undo-uses="undoUses"
           :remove-block-uses="removeBlockUses"
-          :hint-uses="hintUses"
           :score-multiplier="scoreMultiplier"
+          :rotate-uses="rotateUses"
+          :hold-uses="holdUses"
+          :held-piece="heldPiece"
+          :game-mode="gameMode"
+          :total-gems-collected="totalGemsCollected"
           @place-piece="handlePlacePiece"
           @undo="undo"
           @remove-block="removeBlock"
           @new-game="handleNewGame"
+          @hold-piece="holdPiece"
+          @rotate-piece="rotatePiece"
         />
       </div>
 
-      <!-- RIGHT: Sidebar with Tabs -->
-      <div class="w-1/3 shrink-0 bg-neutral-900/95 backdrop-blur-lg border-l border-neutral-700 flex flex-col min-h-0">
-        <!-- Tab Bar -->
-        <div class="flex border-b border-neutral-700/50 shrink-0 overflow-x-auto">
-          <button class="tab-button" :class="{ active: activeTab === 'archipelago' }" @click="activeTab = 'archipelago'">Archipelago</button>
-          <button class="tab-button" :class="{ active: activeTab === 'settings' }" @click="activeTab = 'settings'">Settings</button>
-          <button class="tab-button" :class="{ active: activeTab === 'shop' }" @click="activeTab = 'shop'">Shop</button>
-          <button class="tab-button" :class="{ active: activeTab === 'debug' }" @click="activeTab = 'debug'">Debug</button>
+      <!-- RIGHT: Sidebar with Tabs - hidden on mobile when game tab active -->
+      <div
+        class="w-full lg:w-1/3 shrink-0 bg-neutral-900/95 backdrop-blur-lg border-t lg:border-t-0 lg:border-l border-neutral-700 flex flex-col min-h-0"
+        :class="{ 'hidden lg:flex': activeMobileTab === 'game' }"
+      >
+        <!-- Tab Bar (desktop only) -->
+        <div class="hidden lg:flex border-b border-neutral-700/50 shrink-0 overflow-x-auto">
+          <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'archipelago' }" @click="activeTab = 'archipelago'">
+            Archipelago
+          </button>
+          <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'settings' }" @click="activeTab = 'settings'">Settings</button>
+          <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'shop' }" @click="activeTab = 'shop'">Shop</button>
+          <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'debug' }" @click="activeTab = 'debug'">Debug</button>
         </div>
 
         <!-- Tab Content -->
-        <div class="p-4 flex-1 overflow-y-auto min-h-0">
+        <div class="p-3 sm:p-4 flex-1 overflow-y-auto min-h-0">
           <!-- ARCHIPELAGO TAB -->
-          <div v-if="activeTab === 'archipelago'" class="space-y-6">
+          <div v-if="isTabVisible('archipelago')" class="space-y-6">
             <div>
               <h2 class="font-semibold text-neutral-100 mb-1">Archipelago Connection</h2>
               <p class="text-xs text-neutral-400">Connect to multiplayer server</p>
@@ -293,9 +465,7 @@
               </div>
 
               <div v-if="lastMessage" class="mt-4 p-3 bg-neutral-900/50 rounded-lg border border-neutral-600">
-                <div class="text-xs text-neutral-300">
-                  {{ lastMessage }}
-                </div>
+                <div class="text-xs text-neutral-300">{{ lastMessage }}</div>
               </div>
             </div>
           </div>
@@ -308,11 +478,86 @@
             </div>
 
             <section class="space-y-4">
+              <h3 class="section-heading">Game Mode</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3">
+                <p class="text-xs text-neutral-400 mb-3">Choose your gameplay style</p>
+
+                <!-- Free Play Mode -->
+                <button
+                  @click="handleGameModeChange('free-play')"
+                  :class="[
+                    'w-full text-left px-4 py-3 rounded-lg border-2 transition-all',
+                    gameMode === 'free-play' ? 'border-blue-500 bg-blue-500/20' : 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600',
+                  ]"
+                >
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="text-sm font-medium text-neutral-100">🎮 Free Play</div>
+                      <div class="text-xs text-neutral-400 mt-1">All pieces unlocked • Abilities cost gems</div>
+                    </div>
+                    <div v-if="gameMode === 'free-play'" class="text-blue-400 text-lg">✓</div>
+                  </div>
+                </button>
+
+                <!-- Archipelago Mode -->
+                <button
+                  @click="handleGameModeChange('archipelago')"
+                  :disabled="status !== 'connected'"
+                  :class="[
+                    'w-full text-left px-4 py-3 rounded-lg border-2 transition-all',
+                    gameMode === 'archipelago'
+                      ? 'border-purple-500 bg-purple-500/20'
+                      : status === 'connected'
+                      ? 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600'
+                      : 'border-neutral-800 bg-neutral-900/50 opacity-50 cursor-not-allowed',
+                  ]"
+                >
+                  <div class="flex items-center justify-between">
+                    <div>
+                      <div class="text-sm font-medium text-neutral-100">🏝️ Archipelago</div>
+                      <div class="text-xs text-neutral-400 mt-1">
+                        {{ status === 'connected' ? 'Pieces & abilities from multiworld' : 'Connect to AP server first' }}
+                      </div>
+                    </div>
+                    <div v-if="gameMode === 'archipelago'" class="text-purple-400 text-lg">✓</div>
+                  </div>
+                </button>
+
+                <!-- Mode Description -->
+                <div class="mt-4 p-3 bg-neutral-900/50 rounded text-xs text-neutral-400">
+                  <template v-if="gameMode === 'free-play'">
+                    <span class="text-blue-400">Free Play:</span> All {{ ALL_PIECES.length }} pieces available! Collect gems to use undo, rotate, and
+                    hold abilities.
+                  </template>
+                  <template v-else-if="gameMode === 'archipelago'">
+                    <span class="text-purple-400">Archipelago:</span> Unlock pieces and abilities through the Archipelago multiworld server. Gems are
+                    AP items!
+                  </template>
+                </div>
+              </div>
+            </section>
+
+            <section class="space-y-4">
               <h3 class="section-heading">Game Info</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-neutral-300">Grid Size</span>
-                  <span class="text-sm font-bold text-blue-400">{{ gridSize }}x{{ gridSize }}</span>
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-neutral-300">Grid Size</span>
+                    <span class="text-sm font-bold text-blue-400">{{ gridSize }}x{{ gridSize }}</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button
+                      v-for="size in [6, 9, 12]"
+                      :key="size"
+                      @click="handleGridSizeChange(size)"
+                      :class="[
+                        'flex-1 px-3 py-2 text-xs rounded transition-colors',
+                        gridSize === size ? 'bg-blue-600 text-white' : 'bg-neutral-700/50 text-neutral-300 hover:bg-neutral-600/50',
+                      ]"
+                    >
+                      {{ size }}x{{ size }}
+                    </button>
+                  </div>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-neutral-300">Score Multiplier</span>
@@ -320,7 +565,72 @@
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-neutral-300">Available Piece Slots</span>
-                  <span class="text-sm font-bold text-purple-400">{{ currentPieces.length }}</span>
+                  <span class="text-sm font-bold text-purple-400">{{ maxPieceSlots }}</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="space-y-4">
+              <h3 class="section-heading">
+                {{ gameMode === 'free-play' ? 'Gem-Powered Abilities' : 'Unlocked Abilities' }}
+              </h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2 text-sm">
+                <div v-if="gameMode === 'free-play'" class="mb-3 p-2 bg-pink-500/10 border border-pink-500/30 rounded text-xs text-pink-300">
+                  💎 You have {{ totalGemsCollected }} gems
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-neutral-300">🔄 Rotate Pieces</span>
+                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : rotateUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                    {{ gameMode === 'free-play' ? '1 gem' : rotateUses }}
+                  </span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-neutral-300">↶ Undo</span>
+                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : undoUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                    {{ gameMode === 'free-play' ? '1 gem' : undoUses }}
+                  </span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-neutral-300">🗑️ Remove Block</span>
+                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : removeBlockUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                    {{ gameMode === 'free-play' ? '1 gem' : removeBlockUses }}
+                  </span>
+                </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-neutral-300">📦 Hold Piece</span>
+                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : holdUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                    {{ gameMode === 'free-play' ? '1 gem' : holdUses }}
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            <section v-if="gameMode === 'archipelago'" class="space-y-4">
+              <h3 class="section-heading">
+                Unlocked Pieces ({{ unlockedPieceIds.length }} / {{ ALL_PIECES.length }})
+                <span class="text-2xs text-purple-400 ml-2">via Archipelago</span>
+              </h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4">
+                <div class="grid grid-cols-2 gap-3">
+                  <div
+                    v-for="piece in ALL_PIECES.filter((p) => unlockedPieceIds.includes(p.id))"
+                    :key="piece.id"
+                    class="bg-neutral-900/50 rounded p-2"
+                  >
+                    <div class="text-xs text-neutral-300 mb-2">{{ piece.name }}</div>
+                    <div class="flex items-center justify-center">
+                      <div class="inline-grid gap-0.5">
+                        <div v-for="(row, i) in piece.shape" :key="i" class="flex gap-0.5">
+                          <div
+                            v-for="(cell, j) in row"
+                            :key="j"
+                            :style="{ backgroundColor: cell ? piece.color : 'transparent' }"
+                            class="w-4 h-4 rounded-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </section>
@@ -339,11 +649,9 @@
                 <button
                   class="w-full px-4 py-3 rounded text-sm font-medium transition-colors flex items-center justify-between"
                   :class="
-                    canUndo && undoUses > 0
-                      ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30'
-                      : 'bg-neutral-700/30 text-neutral-500 cursor-not-allowed'
+                    undoUses > 0 ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30' : 'bg-neutral-700/30 text-neutral-500 cursor-not-allowed'
                   "
-                  :disabled="!canUndo || undoUses <= 0"
+                  :disabled="undoUses <= 0"
                   @click="undo"
                 >
                   <span>↶ Undo Last Move</span>
@@ -360,23 +668,12 @@
                   <span>🗑️ Remove Block</span>
                   <span class="text-xs opacity-70">{{ removeBlockUses }} available</span>
                 </button>
-
-                <button
-                  class="w-full px-4 py-3 rounded text-sm font-medium transition-colors flex items-center justify-between"
-                  :class="
-                    hintUses > 0 ? 'bg-purple-500/20 text-purple-300 hover:bg-purple-500/30' : 'bg-neutral-700/30 text-neutral-500 cursor-not-allowed'
-                  "
-                  :disabled="hintUses <= 0"
-                >
-                  <span>💡 Placement Hint</span>
-                  <span class="text-xs opacity-70">{{ hintUses }} available</span>
-                </button>
               </div>
             </section>
           </div>
 
           <!-- DEBUG TAB -->
-          <div v-else-if="activeTab === 'debug'" class="space-y-6">
+          <div v-else-if="isTabVisible('debug')" class="space-y-6">
             <div>
               <h2 class="font-semibold text-neutral-100 mb-1">Debug Tools</h2>
               <p class="text-xs text-neutral-400">Development and testing</p>
@@ -386,7 +683,23 @@
               <h3 class="section-heading">Actions</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3">
                 <button type="button" class="btn-secondary w-full" @click="handleNewGame()">New Game</button>
-                <button type="button" class="btn-destructive w-full" @click="initGame()">Reset All Progress</button>
+                <button type="button" class="btn-destructive w-full" @click="handleNewGame()">Reset All Progress</button>
+              </div>
+            </section>
+
+            <section class="space-y-3">
+              <h3 class="section-heading">Grant Rewards</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2">
+                <button type="button" class="btn-secondary w-full text-xs" @click="totalScore += 100">📊 +100 Score</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="totalScore += 1000">📊 +1000 Score</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addRotateAbility()">+ Rotate (1 use)</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addUndoAbility()">+ Undo (1 use)</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addRemoveBlock()">+ Remove Block (1 use)</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addHoldAbility()">+ Hold (1 use)</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="totalGemsCollected++">💎 Give Gem</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="spawnGem()">💎 Spawn Gem</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addPieceSlot()">+ Piece Slot</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addScoreMultiplier(0.1)">+ 0.1x Score Multiplier</button>
               </div>
             </section>
 
@@ -394,16 +707,20 @@
               <h3 class="section-heading">Game State</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2 text-xs">
                 <div class="flex justify-between">
-                  <span class="text-neutral-400">Current Score:</span>
-                  <span class="text-neutral-200">{{ score }}</span>
+                  <span class="text-neutral-400">Total Score:</span>
+                  <span class="text-neutral-200">{{ totalScore }}</span>
                 </div>
                 <div class="flex justify-between">
                   <span class="text-neutral-400">Game Over:</span>
                   <span class="text-neutral-200">{{ isGameOver ? 'Yes' : 'No' }}</span>
                 </div>
                 <div class="flex justify-between">
-                  <span class="text-neutral-400">Can Rotate:</span>
-                  <span class="text-neutral-200">{{ canRotate ? 'Yes' : 'No' }}</span>
+                  <span class="text-neutral-400">Rotate Uses:</span>
+                  <span class="text-neutral-200">{{ rotateUses }}</span>
+                </div>
+                <div class="flex justify-between">
+                  <span class="text-neutral-400">Unlocked Pieces:</span>
+                  <span class="text-neutral-200">{{ unlockedPieceIds.length }}</span>
                 </div>
               </div>
             </section>
@@ -414,22 +731,15 @@
 
     <!-- Bottom Footer/Status Bar -->
     <footer class="shrink-0 border-t border-neutral-700/50 bg-neutral-950/90 backdrop-blur-lg">
-      <div class="px-6 py-3">
-        <div class="flex items-center justify-between">
-          <!-- Left side: Status indicator -->
-          <div class="flex items-center gap-4">
-            <div class="flex items-center gap-2">
-              <span class="status-dot" :class="statusMeta.dot"></span>
-              <span class="text-neutral-400 text-sm">Archipelago</span>
-              <span :class="statusMeta.text" class="font-semibold text-sm">{{ statusMeta.label }}</span>
-            </div>
-            <div class="text-xs text-white/70 hidden lg:block">Click pieces to select, then click on the grid to place</div>
+      <div class="px-3 sm:px-6 py-2 sm:py-3">
+        <div class="flex items-center gap-2 sm:gap-4">
+          <div class="status-indicator shrink-0">
+            <span class="status-dot" :class="statusMeta.dot"></span>
+            <span class="text-neutral-400 font-medium text-xs sm:text-sm">Archipelago</span>
+            <span :class="statusMeta.text" class="font-semibold text-xs sm:text-sm">{{ statusMeta.label }}</span>
           </div>
-
-          <!-- Right side: Version info -->
-          <div class="text-xs text-neutral-400">
-            <span class="opacity-50">v0.1.0</span>
-          </div>
+          <div class="text-xs text-white/70 hidden lg:block truncate">Click and drag pieces onto the grid</div>
+          <div v-if="lastMessage" class="text-xs text-neutral-400 truncate ml-auto">{{ lastMessage }}</div>
         </div>
       </div>
     </footer>

@@ -14,29 +14,57 @@ import {
 import { usePersistentRef } from './usePersistence';
 import { getScoreLocationId, getLineClearLocationId, getBoxClearLocationId, getComboLocationId, getPieceLocationId } from './useArchipelagoItems';
 
+export type GameMode = 'free-play' | 'archipelago';
+
 export function useBlockudoku() {
+  // Game mode
+  const gameMode = usePersistentRef<GameMode>('blockudoku_game_mode', 'free-play');
+
   // Game state
-  const gridSize = usePersistentRef('blockudoku_grid_size', 6);
-  const grid = usePersistentRef<BlockGrid>('blockudoku_grid', makeGrid(6, 6));
-  const score = usePersistentRef('blockudoku_score', 0);
+  const gridSize = usePersistentRef('blockudoku_grid_size', 9);
+  const grid = usePersistentRef<BlockGrid>('blockudoku_grid', makeGrid(9, 9));
   const totalScore = usePersistentRef('blockudoku_total_score', 0);
+
+  // Clearing animation state
+  const clearingCells = ref<Set<string>>(new Set()); // Set of "row-col" strings
+
+  // Collected gem check IDs that need to be sent to AP
+  const collectedGemChecks = ref<number[]>([]);
+
+  // Get and clear collected gem checks (for sending to AP)
+  function getCollectedGemChecks(): number[] {
+    const checks = [...collectedGemChecks.value];
+    collectedGemChecks.value = [];
+    return checks;
+  }
+
+  // Gem cells (Archipelago checks)
+  const gemCells = ref<{ row: number; col: number; checkId: number }[]>([]);
+  const gemSpawnChance = 0.3; // 30% chance to spawn a gem on piece restock
+  const nextGemCheckId = ref(10000000); // Starting ID for gem checks
 
   // Statistics for Archipelago checks
   const totalLinesCleared = usePersistentRef('blockudoku_lines_cleared', 0);
   const totalBoxesCleared = usePersistentRef('blockudoku_boxes_cleared', 0);
   const totalCombos = usePersistentRef('blockudoku_combos', 0);
   const totalPiecesPlaced = usePersistentRef('blockudoku_pieces_placed', 0);
+  const totalGemsCollected = usePersistentRef('blockudoku_gems_collected', 0);
 
-  // Unlocked pieces (from Archipelago)
-  const unlockedPieceIds = usePersistentRef<string[]>('blockudoku_unlocked_pieces', ['single', 'domino_i', 'tromino_i', 'tromino_l', 'tetromino_i']);
+  // Unlocked pieces (from Archipelago only)
+  const unlockedPieceIds = usePersistentRef<string[]>('blockudoku_unlocked_pieces', []);
+
+  // Initialize unlocked pieces if empty (for archipelago mode)
+  if (unlockedPieceIds.value.length === 0 && gameMode.value === 'archipelago') {
+    const shuffled = [...ALL_PIECES].sort(() => Math.random() - 0.5);
+    unlockedPieceIds.value = shuffled.slice(0, 3).map((p) => p.id);
+  }
 
   // Abilities
-  const canRotate = usePersistentRef('blockudoku_can_rotate', false);
-  const canUndo = usePersistentRef('blockudoku_can_undo', false);
   const rotateUses = usePersistentRef('blockudoku_rotate_uses', 0);
-  const undoUses = usePersistentRef('blockudoku_undo_uses', 0);
+  const undoUses = usePersistentRef('blockudoku_undo_uses', 1);
   const removeBlockUses = usePersistentRef('blockudoku_remove_uses', 0);
-  const hintUses = usePersistentRef('blockudoku_hint_uses', 0);
+  const holdUses = usePersistentRef('blockudoku_hold_uses', 0);
+  const heldPiece = usePersistentRef<Piece | null>('blockudoku_held_piece', null);
 
   // Score multiplier (from AP items)
   const scoreMultiplier = usePersistentRef('blockudoku_score_multiplier', 1.0);
@@ -47,10 +75,15 @@ export function useBlockudoku() {
 
   // Game state
   const isGameOver = ref(false);
-  const lastMove = ref<{ grid: BlockGrid; pieces: Piece[]; score: number } | null>(null);
+  const lastMove = ref<{ grid: BlockGrid; pieces: Piece[]; totalScore: number } | null>(null);
 
   // Available pieces based on what's unlocked
   const availablePieces = computed(() => {
+    // In free-play mode, all pieces are available
+    if (gameMode.value === 'free-play') {
+      return ALL_PIECES;
+    }
+    // In archipelago mode, only unlocked pieces are available
     return ALL_PIECES.filter((p) => unlockedPieceIds.value.includes(p.id));
   });
 
@@ -62,21 +95,80 @@ export function useBlockudoku() {
     return !canPlaceAnyPiece(grid.value, currentPieces.value);
   }
 
+  // Helper function to rotate a piece shape
+  function applyRotation(piece: Piece): Piece {
+    const oldShape = piece.shape;
+    const rows = oldShape.length;
+    const cols = oldShape[0]?.length || 0;
+
+    const newShape: BlockCell[][] = [];
+    for (let c = 0; c < cols; c++) {
+      const newRow: BlockCell[] = [];
+      for (let r = rows - 1; r >= 0; r--) {
+        newRow.push((oldShape[r]?.[c] || 0) as BlockCell);
+      }
+      newShape.push(newRow);
+    }
+
+    return { ...piece, shape: newShape };
+  }
+
   // Generate new pieces
   function generateNewPieces() {
     if (availablePieces.value.length === 0) {
       console.error('No pieces unlocked!');
       return;
     }
-    currentPieces.value = generatePieces(availablePieces.value, maxPieceSlots.value);
+    let pieces = generatePieces(availablePieces.value, maxPieceSlots.value);
+
+    // Apply random rotation to each piece
+    pieces = pieces.map((piece) => {
+      const rotations = Math.floor(Math.random() * 4); // 0-3 rotations
+      let rotatedPiece = piece;
+      for (let i = 0; i < rotations; i++) {
+        rotatedPiece = applyRotation(rotatedPiece);
+      }
+      return rotatedPiece;
+    });
+
+    currentPieces.value = pieces;
+
+    // Random chance to spawn a gem on the grid
+    if (Math.random() < gemSpawnChance) {
+      spawnGem();
+    }
+  }
+
+  // Spawn a gem in a random empty cell
+  function spawnGem() {
+    // Find all empty cells
+    const emptyCells: { row: number; col: number }[] = [];
+    for (let r = 0; r < grid.value.length; r++) {
+      for (let c = 0; c < grid.value[r]!.length; c++) {
+        if (grid.value[r]![c] === 0) {
+          emptyCells.push({ row: r, col: c });
+        }
+      }
+    }
+
+    if (emptyCells.length === 0) return;
+
+    // Pick a random empty cell
+    const randomCell = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    if (!randomCell) return;
+
+    // Place gem and track it
+    grid.value[randomCell.row]![randomCell.col] = 2;
+    const checkId = nextGemCheckId.value++;
+    gemCells.value.push({ row: randomCell.row, col: randomCell.col, checkId });
   }
 
   // Initialize game
   function initGame() {
     grid.value = makeGrid(gridSize.value, gridSize.value);
-    score.value = 0;
     isGameOver.value = false;
     lastMove.value = null;
+    heldPiece.value = null;
     generateNewPieces();
   }
 
@@ -87,6 +179,35 @@ export function useBlockudoku() {
     totalBoxesCleared.value = 0;
     totalCombos.value = 0;
     totalPiecesPlaced.value = 0;
+    totalGemsCollected.value = 0;
+    heldPiece.value = null;
+    gemCells.value = [];
+
+    // Free-play mode: no abilities, use gems instead
+    if (gameMode.value === 'free-play') {
+      rotateUses.value = 0;
+      undoUses.value = 0;
+      removeBlockUses.value = 0;
+      holdUses.value = 0;
+      scoreMultiplier.value = 1.0;
+      maxPieceSlots.value = 3;
+      // All pieces are available in free-play, no need to set unlockedPieceIds
+      unlockedPieceIds.value = [];
+    } else {
+      // Archipelago mode starts with limited resources from AP
+      rotateUses.value = 0;
+      undoUses.value = 0;
+      removeBlockUses.value = 0;
+      holdUses.value = 0;
+      scoreMultiplier.value = 1.0;
+      maxPieceSlots.value = 3;
+
+      // Reset to 3 random unique pieces (for archipelago mode)
+      const shuffled = [...ALL_PIECES].sort(() => Math.random() - 0.5);
+      unlockedPieceIds.value = shuffled.slice(0, 3).map((p) => p.id);
+    }
+
+    gridSize.value = 9;
   }
 
   // Place a piece
@@ -99,7 +220,7 @@ export function useBlockudoku() {
     lastMove.value = {
       grid: grid.value.map((r) => [...r]),
       pieces: [...currentPieces.value],
-      score: score.value,
+      totalScore: totalScore.value,
     };
 
     // Place the piece
@@ -111,43 +232,138 @@ export function useBlockudoku() {
       currentPieces.value = currentPieces.value.filter((_, i) => i !== index);
     }
 
+    // Also clear from held piece if it matches
+    if (heldPiece.value?.id === piece.id) {
+      heldPiece.value = null;
+    }
+
     totalPiecesPlaced.value++;
 
     // Check for clears
     const clearResult = clearCompleted(grid.value);
     if (clearResult.totalClears > 0) {
-      grid.value = clearResult.newGrid;
+      // Mark cells as clearing for animation
+      clearingCells.value = new Set();
 
-      // Update statistics
-      totalLinesCleared.value += clearResult.clearedRows.length + clearResult.clearedCols.length;
-      totalBoxesCleared.value += clearResult.clearedBoxes.length;
+      // Add all cells that will be cleared
+      clearResult.clearedRows.forEach((row) => {
+        for (let col = 0; col < gridSize.value; col++) {
+          clearingCells.value.add(`${row}-${col}`);
+        }
+      });
 
-      // Count as combo if multiple clears
-      if (clearResult.totalClears > 1) {
-        totalCombos.value++;
+      clearResult.clearedCols.forEach((col) => {
+        for (let row = 0; row < gridSize.value; row++) {
+          clearingCells.value.add(`${row}-${col}`);
+        }
+      });
+
+      clearResult.clearedBoxes.forEach((boxIdx) => {
+        const boxRow = Math.floor(boxIdx / 3);
+        const boxCol = boxIdx % 3;
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            clearingCells.value.add(`${boxRow * 3 + r}-${boxCol * 3 + c}`);
+          }
+        }
+      });
+
+      // Delay the actual clear to allow animation to play
+      setTimeout(() => {
+        grid.value = clearResult.newGrid;
+        clearingCells.value = new Set();
+
+        // Clear any gems in the cleared rows/cols/boxes
+        const gemsToRemove: number[] = [];
+
+        clearResult.clearedRows.forEach((row) => {
+          for (let col = 0; col < gridSize.value; col++) {
+            const gemIndex = gemCells.value.findIndex((g) => g.row === row && g.col === col);
+            if (gemIndex !== -1 && gemCells.value[gemIndex]) {
+              gemsToRemove.push(gemIndex);
+            }
+          }
+        });
+
+        clearResult.clearedCols.forEach((col) => {
+          for (let row = 0; row < gridSize.value; row++) {
+            const gemIndex = gemCells.value.findIndex((g) => g.row === row && g.col === col);
+            if (gemIndex !== -1 && gemCells.value[gemIndex]) {
+              gemsToRemove.push(gemIndex);
+            }
+          }
+        });
+
+        clearResult.clearedBoxes.forEach((boxIdx) => {
+          const boxRow = Math.floor(boxIdx / 3);
+          const boxCol = boxIdx % 3;
+          for (let r = 0; r < 3; r++) {
+            for (let c = 0; c < 3; c++) {
+              const actualRow = boxRow * 3 + r;
+              const actualCol = boxCol * 3 + c;
+              const gemIndex = gemCells.value.findIndex((g) => g.row === actualRow && g.col === actualCol);
+              if (gemIndex !== -1 && gemCells.value[gemIndex]) {
+                gemsToRemove.push(gemIndex);
+              }
+            }
+          }
+        });
+
+        // Remove gems (in reverse order to avoid index issues)
+        const gemsCollected = [...new Set(gemsToRemove)];
+        gemsCollected
+          .sort((a, b) => b - a)
+          .forEach((index) => {
+            const gem = gemCells.value[index];
+            if (gem) {
+              console.log('💎 Gem collected via line clear! Check ID:', gem.checkId);
+              totalGemsCollected.value++;
+              collectedGemChecks.value.push(gem.checkId);
+            }
+            gemCells.value.splice(index, 1);
+          });
+
+        // Update statistics
+        totalLinesCleared.value += clearResult.clearedRows.length + clearResult.clearedCols.length;
+        totalBoxesCleared.value += clearResult.clearedBoxes.length;
+
+        // Count as combo if multiple clears
+        if (clearResult.totalClears > 1) {
+          totalCombos.value++;
+        }
+
+        // Calculate score
+        const comboMultiplier = clearResult.totalClears > 1 ? clearResult.totalClears : 1;
+        const points = calculateScore(
+          clearResult.clearedRows.length,
+          clearResult.clearedCols.length,
+          clearResult.clearedBoxes.length,
+          comboMultiplier * scoreMultiplier.value,
+        );
+
+        totalScore.value += points;
+
+        // Generate new pieces if all placed
+        if (currentPieces.value.length === 0) {
+          generateNewPieces();
+        }
+
+        // Check for game over after clearing
+        if (checkGameOver()) {
+          isGameOver.value = true;
+        }
+      }, 400); // Animation duration
+    } else {
+      // No clears, check immediately
+      // Generate new pieces if all placed
+      if (currentPieces.value.length === 0) {
+        generateNewPieces();
       }
 
-      // Calculate score
-      const comboMultiplier = clearResult.totalClears > 1 ? clearResult.totalClears : 1;
-      const points = calculateScore(
-        clearResult.clearedRows.length,
-        clearResult.clearedCols.length,
-        clearResult.clearedBoxes.length,
-        comboMultiplier * scoreMultiplier.value,
-      );
-
-      score.value += points;
-      totalScore.value += points;
-    }
-
-    // Generate new pieces if all placed
-    if (currentPieces.value.length === 0) {
-      generateNewPieces();
-    }
-
-    // Check for game over
-    if (checkGameOver()) {
-      isGameOver.value = true;
+      // Check for game over
+      if (checkGameOver()) {
+        isGameOver.value = true;
+      }
     }
 
     return true;
@@ -155,14 +371,21 @@ export function useBlockudoku() {
 
   // Undo last move
   function undo() {
-    if (!lastMove.value || undoUses.value <= 0) {
-      return false;
+    if (!lastMove.value) return false;
+
+    // In free-play mode, consume a gem instead of ability uses
+    if (gameMode.value === 'free-play') {
+      if (totalGemsCollected.value <= 0) return false;
+      totalGemsCollected.value--;
+    } else {
+      // In archipelago mode, use ability uses
+      if (undoUses.value <= 0) return false;
+      undoUses.value--;
     }
 
     grid.value = lastMove.value.grid;
     currentPieces.value = lastMove.value.pieces;
-    score.value = lastMove.value.score;
-    undoUses.value--;
+    totalScore.value = lastMove.value.totalScore;
     lastMove.value = null;
     isGameOver.value = false;
 
@@ -171,12 +394,21 @@ export function useBlockudoku() {
 
   // Remove a single block from the grid
   function removeBlock(row: number, col: number): boolean {
-    if (removeBlockUses.value <= 0 || grid.value[row]?.[col] === 0) {
+    if (grid.value[row]?.[col] === 0) {
       return false;
     }
 
+    // In free-play mode, consume a gem instead of ability uses
+    if (gameMode.value === 'free-play') {
+      if (totalGemsCollected.value <= 0) return false;
+      totalGemsCollected.value--;
+    } else {
+      // In archipelago mode, use ability uses
+      if (removeBlockUses.value <= 0) return false;
+      removeBlockUses.value--;
+    }
+
     grid.value = grid.value.map((r, rIdx) => r.map((cell, cIdx) => (rIdx === row && cIdx === col ? 0 : cell)));
-    removeBlockUses.value--;
 
     // Re-check game over state
     if (isGameOver.value) {
@@ -194,34 +426,24 @@ export function useBlockudoku() {
     }
   }
 
-  // Unlock grid size
-  function unlockGridSize(size: number) {
-    if (size > gridSize.value) {
+  // Set grid size (user preference - requires new game to take effect)
+  function setGridSize(size: number) {
+    if (size !== gridSize.value) {
+      resetStats();
       gridSize.value = size;
-      // Recreate grid with new size (copy old content if possible)
-      const newGrid = makeGrid(size, size);
-      const oldSize = grid.value.length;
-      for (let r = 0; r < Math.min(oldSize, size); r++) {
-        for (let c = 0; c < Math.min(oldSize, size); c++) {
-          const sourceRow = grid.value[r];
-          const targetRow = newGrid[r];
-          if (sourceRow && targetRow) {
-            targetRow[c] = sourceRow[c] ?? 0;
-          }
-        }
-      }
-      grid.value = newGrid;
+      applyGridSize();
+      initGame();
     }
   }
 
-  // Add abilities
-  function addRotateAbility() {
-    canRotate.value = true;
-    rotateUses.value++;
+  // Apply the grid size (called when starting a new game)
+  function applyGridSize() {
+    const size = gridSize.value;
+    grid.value = makeGrid(size, size);
   }
 
+  // Add abilities
   function addUndoAbility() {
-    canUndo.value = true;
     undoUses.value++;
   }
 
@@ -229,8 +451,12 @@ export function useBlockudoku() {
     removeBlockUses.value++;
   }
 
-  function addHint() {
-    hintUses.value++;
+  function addRotateAbility() {
+    rotateUses.value++;
+  }
+
+  function addHoldAbility() {
+    holdUses.value++;
   }
 
   function addScoreMultiplier(amount: number) {
@@ -244,6 +470,62 @@ export function useBlockudoku() {
       if (currentPieces.value.length > 0 && currentPieces.value.length < maxPieceSlots.value) {
         currentPieces.value = [...currentPieces.value, ...generatePieces(availablePieces.value, 1)];
       }
+    }
+  }
+
+  // Hold piece functionality
+  function holdPiece(piece: Piece): boolean {
+    // In free-play mode, consume a gem instead of ability uses
+    if (gameMode.value === 'free-play') {
+      if (totalGemsCollected.value <= 0) return false;
+      totalGemsCollected.value--;
+    } else {
+      // In archipelago mode, use ability uses
+      if (holdUses.value <= 0) return false;
+      holdUses.value--;
+    }
+
+    // Swap the piece with the held piece
+    const temp = heldPiece.value;
+    heldPiece.value = piece;
+
+    // Remove piece from current pieces
+    const index = currentPieces.value.findIndex((p) => p === piece || p.id === piece.id);
+    if (index > -1) {
+      currentPieces.value = currentPieces.value.filter((_, i) => i !== index);
+    }
+
+    // If there was a held piece, add it back to current pieces
+    if (temp) {
+      currentPieces.value = [...currentPieces.value, temp];
+    }
+
+    return true;
+  }
+
+  // Rotate a piece 90 degrees clockwise
+  function rotatePiece(piece: Piece) {
+    // In free-play mode, consume a gem instead of ability uses
+    if (gameMode.value === 'free-play') {
+      if (totalGemsCollected.value <= 0) return;
+      totalGemsCollected.value--;
+    } else {
+      // In archipelago mode, use ability uses
+      if (rotateUses.value <= 0) return;
+      rotateUses.value--;
+    }
+
+    const rotatedPiece = applyRotation(piece);
+
+    // Update the piece in currentPieces
+    const index = currentPieces.value.findIndex((p) => p.id === piece.id);
+    if (index !== -1) {
+      currentPieces.value = [...currentPieces.value.slice(0, index), rotatedPiece, ...currentPieces.value.slice(index + 1)];
+    }
+
+    // Update held piece if it's the one being rotated
+    if (heldPiece.value?.id === piece.id) {
+      heldPiece.value = rotatedPiece;
     }
   }
 
@@ -285,25 +567,29 @@ export function useBlockudoku() {
     // State
     grid,
     gridSize,
-    score,
     totalScore,
     currentPieces,
     isGameOver,
     availablePieces,
+    clearingCells,
+    gemCells,
+
+    // Mode
+    gameMode,
 
     // Statistics
     totalLinesCleared,
     totalBoxesCleared,
     totalCombos,
     totalPiecesPlaced,
+    totalGemsCollected,
 
     // Abilities
-    canRotate,
-    canUndo,
     rotateUses,
     undoUses,
     removeBlockUses,
-    hintUses,
+    holdUses,
+    heldPiece,
     scoreMultiplier,
     maxPieceSlots,
 
@@ -313,15 +599,19 @@ export function useBlockudoku() {
     tryPlacePiece,
     undo,
     removeBlock,
+    holdPiece,
+    rotatePiece,
+    spawnGem,
     checkMilestones,
 
     // Archipelago unlocks
     unlockPiece,
-    unlockGridSize,
-    addRotateAbility,
+    setGridSize,
+    getCollectedGemChecks,
     addUndoAbility,
     addRemoveBlock,
-    addHint,
+    addRotateAbility,
+    addHoldAbility,
     addScoreMultiplier,
     addPieceSlot,
     unlockedPieceIds,
