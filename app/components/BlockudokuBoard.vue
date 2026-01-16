@@ -39,6 +39,7 @@
   const draggedPiece = ref<Piece | null>(null);
   const dragPosition = ref<{ x: number; y: number }>({ x: 0, y: 0 });
   const dragOffset = ref<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isTouchDrag = ref(false); // Track if current drag is from touch
   const gridRef = ref<HTMLElement | null>(null);
 
   // Calculate cell size based on grid size and screen size
@@ -228,6 +229,9 @@
     draggedPiece.value = piece;
     selectedPiece.value = piece;
 
+    // Detect if this is a touch event
+    isTouchDrag.value = 'touches' in event;
+
     const clientX = 'touches' in event ? event.touches[0]?.clientX ?? 0 : event.clientX;
     const clientY = 'touches' in event ? event.touches[0]?.clientY ?? 0 : event.clientY;
 
@@ -257,8 +261,10 @@
     // Update hovered cell based on drag position
     if (gridRef.value) {
       const gridRect = gridRef.value.getBoundingClientRect();
+      // Apply the same 80px offset for touch events so the ghost aligns with the visual piece
+      const touchOffset = isTouchDrag.value ? 80 : 0;
       const relX = clientX - gridRect.left;
-      const relY = clientY - gridRect.top;
+      const relY = clientY - gridRect.top - touchOffset;
 
       if (relX >= 0 && relX < gridRect.width && relY >= 0 && relY < gridRect.height) {
         const col = Math.floor((relX / gridRect.width) * props.gridSize);
@@ -285,6 +291,7 @@
 
     // Reset drag state
     isDragging.value = false;
+    isTouchDrag.value = false;
     draggedPiece.value = null;
     selectedPiece.value = null;
     hoveredCell.value = null;
