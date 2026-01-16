@@ -429,7 +429,7 @@ body {
   .btn-primary,
   .btn-secondary,
   .btn-destructive {
-    min-height: 44px;
+    min-height: 32px;
     min-width: 44px;
   }
 
@@ -492,7 +492,7 @@ button {
 
   /* Ensure minimum touch target size */
   button {
-    min-height: 44px;
+    min-height: 32px;
     min-width: 44px;
   }
 

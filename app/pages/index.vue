@@ -598,9 +598,9 @@
     <!-- Main Container -->
     <div class="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
       <!-- LEFT: Main Game Area - hidden on mobile when not on game tab -->
-      <div class="flex-1 px-3 sm:px-6 py-2 sm:py-4 min-h-0 overflow-y-auto" :class="{ 'hidden lg:block': activeMobileTab !== 'game' }">
+      <div class="flex-1 px-0 sm:px-6 py-1 sm:py-4 min-h-0 overflow-y-auto" :class="{ 'hidden lg:block': activeMobileTab !== 'game' }">
         <!-- Stats Panel -->
-        <div class="mb-1 sm:mb-4 p-1.5 sm:p-3 bg-neutral-800/30 rounded-lg border border-neutral-700">
+        <div class="mb-1 sm:mb-4 mx-1 sm:mx-0 p-1 sm:p-3 bg-neutral-800/30 rounded-lg border border-neutral-700">
           <div class="flex items-center justify-between gap-1 sm:gap-2">
             <div class="flex items-center gap-1 sm:gap-2 min-w-0">
               <h2 class="text-xs sm:text-base font-semibold whitespace-nowrap">Blockupelago</h2>
@@ -1208,7 +1208,7 @@
           <div v-if="lastMessage" class="text-2xs sm:text-xs text-neutral-400 truncate ml-auto hidden sm:block">
             Latest Message: {{ lastMessage }}
           </div>
-          <div class="text-2xs sm:text-xs text-neutral-400 truncate ml-auto">v0.1.3</div>
+          <div class="text-xs text-neutral-400 truncate ml-auto">v0.1.3</div>
         </div>
       </div>
     </footer>
