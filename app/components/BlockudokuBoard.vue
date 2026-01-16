@@ -351,7 +351,7 @@
 </script>
 
 <template>
-  <div class="flex flex-col items-center gap-4 sm:gap-6 p-2 sm:p-4">
+  <div class="flex flex-col items-center gap-2 sm:gap-6 p-0 sm:p-4">
     <!-- New Game Button -->
     <div v-if="isGameOver || isPotentialGameOver" class="flex items-center justify-center w-full max-w-4xl">
       <button @click="emit('new-game')" class="px-4 sm:px-6 py-2 bg-green-600 hover:bg-green-700 rounded font-bold text-sm sm:text-base">
