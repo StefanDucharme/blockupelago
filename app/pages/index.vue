@@ -1220,7 +1220,7 @@
               Give Feedback
             </button>
           </div>
-          <div v-if="lastMessage" class="text-xs text-neutral-400 truncate ml-auto">{{ lastMessage }}</div>
+          <div v-if="lastMessage" class="text-xs text-neutral-400 truncate ml-auto">Latest Message: {{ lastMessage }}</div>
           <div class="text-xs text-neutral-400 truncate ml-auto">v0.1.3</div>
         </div>
       </div>
