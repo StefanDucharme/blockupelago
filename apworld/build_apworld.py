@@ -25,8 +25,14 @@ def build_apworld():
 
     # Remove existing apworld if present
     if output_file.exists():
-        output_file.unlink()
-        print(f"Removed existing: {output_file}")
+        try:
+            output_file.unlink()
+            print(f"Removed existing: {output_file}")
+        except PermissionError:
+            print(f"\n⚠️  Error: Cannot delete {output_file}")
+            print("The file is being used by another process (likely Archipelago).")
+            print("Please close Archipelago and try again.\n")
+            return False
 
     # Create the apworld (which is just a zip file)
     with zipfile.ZipFile(output_file, 'w', zipfile.ZIP_DEFLATED) as zipf:

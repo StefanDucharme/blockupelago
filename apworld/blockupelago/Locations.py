@@ -70,8 +70,6 @@ for i in range(1, 101):
         code=9005000 + i,
         region="Game Area"
     )
-        region="Game Area"
-    )
 
 # Add Victory event (no code)
 location_table["Goal"] = BlockudokuLocationData(
