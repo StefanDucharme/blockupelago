@@ -266,14 +266,14 @@ export function useBlockudoku() {
     // Place the piece
     grid.value = placePiece(grid.value, piece, row, col);
 
-    // Remove the piece from current pieces (find by reference or ID)
-    const index = currentPieces.value.findIndex((p) => p === piece || p.id === piece.id);
+    // Remove the piece from current pieces (find by exact reference only)
+    const index = currentPieces.value.findIndex((p) => p === piece);
     if (index > -1) {
       currentPieces.value = currentPieces.value.filter((_, i) => i !== index);
     }
 
-    // Also clear from held piece if it matches
-    if (heldPiece.value?.id === piece.id) {
+    // Also clear from held piece if it matches (by reference)
+    if (heldPiece.value === piece) {
       heldPiece.value = null;
     }
 
