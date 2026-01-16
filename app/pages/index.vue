@@ -1212,6 +1212,7 @@
           </div>
           <div class="text-xs text-white/70 hidden lg:block truncate">Click and drag pieces onto the grid</div>
           <div v-if="lastMessage" class="text-xs text-neutral-400 truncate ml-auto">{{ lastMessage }}</div>
+          <div class="text-xs text-neutral-400 truncate ml-auto">v0.1.1</div>
         </div>
       </div>
     </footer>
