@@ -21,6 +21,11 @@
     heldPiece: Piece | null;
     gameMode: 'free-play' | 'archipelago';
     totalGemsCollected: number;
+    freeRotate?: boolean;
+    freeUndo?: boolean;
+    freeRemove?: boolean;
+    freeHold?: boolean;
+    freeMirror?: boolean;
   }>();
 
   const emit = defineEmits<{
@@ -67,21 +72,21 @@
   // Check ability availability based on game mode
   const canUseUndo = computed(() => {
     if (props.gameMode === 'free-play') {
-      return props.totalGemsCollected > 0;
+      return props.freeUndo || props.totalGemsCollected > 0;
     }
     return props.undoUses > 0;
   });
 
   const canUseRotate = computed(() => {
     if (props.gameMode === 'free-play') {
-      return props.totalGemsCollected > 0;
+      return props.freeRotate || props.totalGemsCollected > 0;
     }
     return props.rotateUses > 0;
   });
 
   const canUseMirror = computed(() => {
     if (props.gameMode === 'free-play') {
-      return props.totalGemsCollected > 0;
+      return props.freeMirror || props.totalGemsCollected > 0;
     }
     return props.mirrorUses > 0;
   });
@@ -120,14 +125,14 @@
 
   const canUseHold = computed(() => {
     if (props.gameMode === 'free-play') {
-      return props.totalGemsCollected > 0;
+      return props.freeHold || props.totalGemsCollected > 0;
     }
     return props.holdUses > 0;
   });
 
   const canUseRemoveBlock = computed(() => {
     if (props.gameMode === 'free-play') {
-      return props.totalGemsCollected > 0;
+      return props.freeRemove || props.totalGemsCollected > 0;
     }
     return props.removeBlockUses > 0;
   });
@@ -135,35 +140,35 @@
   // Display text for ability counts
   const undoDisplayText = computed(() => {
     if (props.gameMode === 'free-play') {
-      return `💎`;
+      return props.freeUndo ? '' : `(💎)`;
     }
     return props.undoUses;
   });
 
   const rotateDisplayText = computed(() => {
     if (props.gameMode === 'free-play') {
-      return `💎`;
+      return props.freeRotate ? '' : `(💎)`;
     }
     return props.rotateUses;
   });
 
   const holdDisplayText = computed(() => {
     if (props.gameMode === 'free-play') {
-      return `💎`;
+      return props.freeHold ? '' : `(💎)`;
     }
     return props.holdUses;
   });
 
   const mirrorDisplayText = computed(() => {
     if (props.gameMode === 'free-play') {
-      return `💎`;
+      return props.freeMirror ? '' : `(💎)`;
     }
     return props.mirrorUses;
   });
 
   const removeBlockDisplayText = computed(() => {
     if (props.gameMode === 'free-play') {
-      return `💎`;
+      return props.freeRemove ? '' : `(💎)`;
     }
     return props.removeBlockUses;
   });
@@ -460,7 +465,7 @@
           @click="emit('undo')"
           class="w-22 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-xs font-medium leading-tight"
         >
-          Undo ({{ undoDisplayText }})
+          Undo {{ undoDisplayText }}
         </button>
 
         <!-- Remove Block Button -->
@@ -472,7 +477,7 @@
             removeMode ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700',
           ]"
         >
-          {{ removeMode ? 'Cancel' : `Remove` }} ({{ removeBlockDisplayText }})
+          {{ removeMode ? 'Cancel' : `Remove` }} {{ removeBlockDisplayText }}
         </button>
 
         <!-- Hold Piece Area -->
@@ -562,31 +567,32 @@
             @click="emit('rotate-piece', piece)"
             :disabled="!canRotatePiece(piece)"
             :class="[
-              'w-full sm:flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors',
+              'w-full sm:flex-1 text-xs rounded transition-colors p-1',
               canRotatePiece(piece) ? 'bg-blue-600/50 hover:bg-blue-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
             ]"
           >
-            🔃<template v-if="!piece.hasBeenRotated"> ({{ rotateDisplayText }})</template>
+            🔃<span v-if="!piece.hasBeenRotated && rotateDisplayText" class="block"> {{ rotateDisplayText }}</span>
           </button>
           <button
             @click="emit('mirror-piece', piece)"
             :disabled="!canMirrorPiece(piece)"
             :class="[
-              'w-full sm:flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors',
+              'w-full sm:flex-1 text-xs rounded transition-colors p-1',
               canMirrorPiece(piece) ? 'bg-cyan-600/50 hover:bg-cyan-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
             ]"
           >
-            <span class="text-cyan-300">↔️</span><template v-if="!piece.hasBeenMirrored"> ({{ mirrorDisplayText }})</template>
+            <span class="text-cyan-300">↔️</span
+            ><span v-if="!piece.hasBeenMirrored && mirrorDisplayText" class="block"> {{ mirrorDisplayText }}</span>
           </button>
           <button
             @click="emit('hold-piece', piece)"
             :disabled="!canUseHold"
             :class="[
-              'w-full sm:flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors',
+              'w-full sm:flex-1 text-xs rounded transition-colors p-1',
               canUseHold ? 'bg-purple-600/50 hover:bg-purple-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
             ]"
           >
-            📦 ({{ holdDisplayText }})
+            📦 <span v-if="holdDisplayText" class="block">{{ holdDisplayText }}</span>
           </button>
         </div>
       </div>

@@ -69,6 +69,11 @@ export function useBlockudoku() {
   // Free-play settings
   const pieceSizeRatio = usePersistentRef('blockudoku_piece_size_ratio', 0.5); // 0 = all small, 1 = all large, 0.5 = balanced
   const disabledShapeIds = usePersistentRef<string[]>('blockudoku_disabled_shapes', []); // IDs of shapes to exclude in free-play
+  const freeRotate = usePersistentRef('blockudoku_free_rotate', false); // Make rotate ability free in free-play
+  const freeUndo = usePersistentRef('blockudoku_free_undo', false); // Make undo ability free in free-play
+  const freeRemove = usePersistentRef('blockudoku_free_remove', false); // Make remove block free in free-play
+  const freeHold = usePersistentRef('blockudoku_free_hold', false); // Make hold ability free in free-play
+  const freeMirror = usePersistentRef('blockudoku_free_mirror', false); // Make mirror ability free in free-play
 
   // Abilities
   const rotateUses = usePersistentRef('blockudoku_rotate_uses', 0);
@@ -472,10 +477,12 @@ export function useBlockudoku() {
   function undo() {
     if (!lastMove.value) return false;
 
-    // In free-play mode, consume a gem instead of ability uses
+    // In free-play mode, consume a gem unless it's set to free
     if (gameMode.value === 'free-play') {
-      if (totalGemsCollected.value <= 0) return false;
-      totalGemsCollected.value--;
+      if (!freeUndo.value) {
+        if (totalGemsCollected.value <= 0) return false;
+        totalGemsCollected.value--;
+      }
     } else {
       // In archipelago mode, use ability uses
       if (undoUses.value <= 0) return false;
@@ -497,10 +504,12 @@ export function useBlockudoku() {
       return false;
     }
 
-    // In free-play mode, consume a gem instead of ability uses
+    // In free-play mode, consume a gem unless it's set to free
     if (gameMode.value === 'free-play') {
-      if (totalGemsCollected.value <= 0) return false;
-      totalGemsCollected.value--;
+      if (!freeRemove.value) {
+        if (totalGemsCollected.value <= 0) return false;
+        totalGemsCollected.value--;
+      }
     } else {
       // In archipelago mode, use ability uses
       if (removeBlockUses.value <= 0) return false;
@@ -657,10 +666,12 @@ export function useBlockudoku() {
 
   // Hold piece functionality
   function holdPiece(piece: Piece): boolean {
-    // In free-play mode, consume a gem instead of ability uses
+    // In free-play mode, consume a gem unless it's set to free
     if (gameMode.value === 'free-play') {
-      if (totalGemsCollected.value <= 0) return false;
-      totalGemsCollected.value--;
+      if (!freeHold.value) {
+        if (totalGemsCollected.value <= 0) return false;
+        totalGemsCollected.value--;
+      }
     } else {
       // In archipelago mode, use ability uses
       if (holdUses.value <= 0) return false;
@@ -694,10 +705,12 @@ export function useBlockudoku() {
   function rotatePiece(piece: Piece) {
     // Only charge for the first rotation of this piece
     if (!piece.hasBeenRotated) {
-      // In free-play mode, consume a gem instead of ability uses
+      // In free-play mode, consume a gem unless it's set to free
       if (gameMode.value === 'free-play') {
-        if (totalGemsCollected.value <= 0) return;
-        totalGemsCollected.value--;
+        if (!freeRotate.value) {
+          if (totalGemsCollected.value <= 0) return;
+          totalGemsCollected.value--;
+        }
       } else {
         // In archipelago mode, use ability uses
         if (rotateUses.value <= 0) return;
@@ -729,10 +742,12 @@ export function useBlockudoku() {
   function mirrorPiece(piece: Piece) {
     // Only charge for the first mirror of this piece
     if (!piece.hasBeenMirrored) {
-      // In free-play mode, consume a gem instead of ability uses
+      // In free-play mode, consume a gem unless it's set to free
       if (gameMode.value === 'free-play') {
-        if (totalGemsCollected.value <= 0) return;
-        totalGemsCollected.value--;
+        if (!freeMirror.value) {
+          if (totalGemsCollected.value <= 0) return;
+          totalGemsCollected.value--;
+        }
       } else {
         // In archipelago mode, use ability uses
         if (mirrorUses.value <= 0) return;
@@ -820,6 +835,11 @@ export function useBlockudoku() {
     // Free-play settings
     pieceSizeRatio,
     disabledShapeIds,
+    freeRotate,
+    freeUndo,
+    freeRemove,
+    freeHold,
+    freeMirror,
 
     // Actions
     initGame,

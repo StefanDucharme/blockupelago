@@ -68,6 +68,11 @@
     unlockedPieceIds,
     pieceSizeRatio,
     disabledShapeIds,
+    freeRotate,
+    freeUndo,
+    freeRemove,
+    freeHold,
+    freeMirror,
     initGame,
     resetStats,
     resetAllProgress,
@@ -707,6 +712,11 @@
           :held-piece="heldPiece"
           :game-mode="gameMode"
           :total-gems-collected="totalGemsCollected"
+          :free-rotate="freeRotate"
+          :free-undo="freeUndo"
+          :free-remove="freeRemove"
+          :free-hold="freeHold"
+          :free-mirror="freeMirror"
           @place-piece="handlePlacePiece"
           @undo="undo"
           @remove-block="removeBlock"
@@ -1040,42 +1050,90 @@
 
             <section class="space-y-4">
               <h3 class="section-heading">
-                {{ gameMode === 'free-play' ? 'Gem-Powered Abilities' : 'Unlocked Abilities' }}
+                {{ gameMode === 'free-play' ? 'Ability Settings' : 'Unlocked Abilities' }}
               </h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2 text-sm">
                 <div v-if="gameMode === 'free-play'" class="mb-3 p-2 bg-pink-500/10 border border-pink-500/30 rounded text-xs text-pink-300">
                   💎 You have {{ totalGemsCollected }} gems
                 </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-neutral-300">🔄 Rotate Pieces</span>
-                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : rotateUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ gameMode === 'free-play' ? '1 gem' : rotateUses }}
-                  </span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-neutral-300">↶ Undo</span>
-                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : undoUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ gameMode === 'free-play' ? '1 gem' : undoUses }}
-                  </span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-neutral-300">🗑️ Remove Block</span>
-                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : removeBlockUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ gameMode === 'free-play' ? '1 gem' : removeBlockUses }}
-                  </span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-neutral-300">📦 Hold Piece</span>
-                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : holdUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ gameMode === 'free-play' ? '1 gem' : holdUses }}
-                  </span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-neutral-300"><span class="text-cyan-400">↔️</span> Mirror Piece</span>
-                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : mirrorUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ gameMode === 'free-play' ? '1 gem' : mirrorUses }}
-                  </span>
-                </div>
+
+                <!-- Free-play mode: toggleable abilities -->
+                <template v-if="gameMode === 'free-play'">
+                  <div class="flex items-center justify-between py-1">
+                    <span class="text-neutral-300">🔄 Rotate Pieces</span>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <span class="text-xs" :class="'text-pink-400'"> 1 gem </span>
+                      <input type="checkbox" v-model="freeRotate" class="toggle-checkbox toggle-checkbox-pink" />
+                      <span class="text-xs" :class="'text-green-400'"> Free </span>
+                    </label>
+                  </div>
+                  <div class="flex items-center justify-between py-1">
+                    <span class="text-neutral-300">↶ Undo</span>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <span class="text-xs" :class="'text-pink-400'"> 1 gem </span>
+                      <input type="checkbox" v-model="freeUndo" class="toggle-checkbox toggle-checkbox-pink" />
+                      <span class="text-xs" :class="'text-green-400'"> Free </span>
+                    </label>
+                  </div>
+                  <div class="flex items-center justify-between py-1">
+                    <span class="text-neutral-300">🗑️ Remove Block</span>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <span class="text-xs" :class="'text-pink-400'"> 1 gem </span>
+                      <input type="checkbox" v-model="freeRemove" class="toggle-checkbox toggle-checkbox-pink" />
+                      <span class="text-xs" :class="'text-green-400'"> Free </span>
+                    </label>
+                  </div>
+                  <div class="flex items-center justify-between py-1">
+                    <span class="text-neutral-300">📦 Hold Piece</span>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <span class="text-xs" :class="'text-pink-400'"> 1 gem </span>
+                      <input type="checkbox" v-model="freeHold" class="toggle-checkbox toggle-checkbox-pink" />
+                      <span class="text-xs" :class="'text-green-400'"> Free </span>
+                    </label>
+                  </div>
+                  <div class="flex items-center justify-between py-1">
+                    <span class="text-neutral-300"><span class="text-cyan-400">↔️</span> Mirror Piece</span>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <span class="text-xs" :class="'text-pink-400'"> 1 gem </span>
+                      <input type="checkbox" v-model="freeMirror" class="toggle-checkbox toggle-checkbox-pink" />
+                      <span class="text-xs" :class="'text-green-400'"> Free </span>
+                    </label>
+                  </div>
+                </template>
+
+                <!-- Archipelago mode: show ability counts -->
+                <template v-else>
+                  <div class="flex items-center justify-between">
+                    <span class="text-neutral-300">🔄 Rotate Pieces</span>
+                    <span :class="rotateUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                      {{ rotateUses }}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-neutral-300">↶ Undo</span>
+                    <span :class="undoUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                      {{ undoUses }}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-neutral-300">🗑️ Remove Block</span>
+                    <span :class="removeBlockUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                      {{ removeBlockUses }}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-neutral-300">📦 Hold Piece</span>
+                    <span :class="holdUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                      {{ holdUses }}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-neutral-300"><span class="text-cyan-400">↔️</span> Mirror Piece</span>
+                    <span :class="mirrorUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                      {{ mirrorUses }}
+                    </span>
+                  </div>
+                </template>
               </div>
             </section>
 
