@@ -143,6 +143,8 @@
           const itemId = newItems[i];
           if (!itemId) continue;
 
+          console.log('[DEBUG] Processing received item:', itemId, getItemName(itemId));
+
           // Handle the item based on its ID
           switch (itemId) {
             // Piece unlocks

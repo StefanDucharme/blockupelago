@@ -192,7 +192,7 @@ export function useArchipelagoItems() {
   // Receive an item from Archipelago
   function receiveItem(itemId: number): boolean {
     if (!receivedItems.value.includes(itemId)) {
-      receivedItems.value.push(itemId);
+      receivedItems.value = [...receivedItems.value, itemId];
       return true;
     }
     return false;
