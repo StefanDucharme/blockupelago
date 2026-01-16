@@ -177,7 +177,7 @@ export function useBlockudoku() {
     holdUses.value = 0;
     scoreMultiplier.value = 1.0;
     maxPieceSlots.value = 3;
-    gridSize.value = 6;
+    gridSize.value = 9;
 
     // Reset to 3 random unique pieces
     const shuffled = [...ALL_PIECES].sort(() => Math.random() - 0.5);
