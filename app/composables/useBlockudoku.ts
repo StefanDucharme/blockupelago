@@ -189,7 +189,8 @@ export function useBlockudoku() {
         transformedPiece = mirrorPiece(transformedPiece);
       }
 
-      return transformedPiece;
+      // Reset transformation flags - initial spawn transformations shouldn't count as "user transformations"
+      return { ...transformedPiece, hasBeenRotated: false, hasBeenMirrored: false };
     });
 
     currentPieces.value = pieces;

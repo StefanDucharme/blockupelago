@@ -18,6 +18,12 @@
     isDragging: boolean;
     draggedPiece: Piece | null;
     selectedPiece: Piece | null;
+    canRotateHeld: boolean;
+    canMirrorHeld: boolean;
+    canShrinkHeld: boolean;
+    rotateDisplayText: string | number;
+    mirrorDisplayText: string | number;
+    shrinkDisplayText: string | number;
   }>();
 
   const emit = defineEmits<{
@@ -26,6 +32,9 @@
     (e: 'select-held-piece'): void;
     (e: 'drag-start-held', event: MouseEvent | TouchEvent): void;
     (e: 'hold-area-ref', ref: HTMLElement | null): void;
+    (e: 'rotate-held'): void;
+    (e: 'mirror-held'): void;
+    (e: 'shrink-held'): void;
   }>();
 
   const holdAreaRef = (el: any) => {
@@ -58,48 +67,42 @@
 
     <!-- Hold Piece Area -->
     <div class="flex flex-col gap-1 sm:gap-2">
+      <div v-if="heldPiece" class="w-18 sm:w-30">
+        <PieceCard
+          :piece="heldPiece"
+          :is-selected="selectedPiece === heldPiece"
+          :is-dragging="isDragging && draggedPiece === heldPiece"
+          :is-placeable="true"
+          :can-rotate="canRotateHeld"
+          :can-mirror="canMirrorHeld"
+          :can-shrink="canShrinkHeld"
+          :rotate-display-text="rotateDisplayText"
+          :mirror-display-text="mirrorDisplayText"
+          :shrink-display-text="shrinkDisplayText"
+          @select="emit('select-held-piece')"
+          @drag-start="(e) => emit('drag-start-held', e)"
+          @rotate="emit('rotate-held')"
+          @mirror="emit('mirror-held')"
+          @shrink="emit('shrink-held')"
+        />
+      </div>
       <div
+        v-else
         :ref="holdAreaRef"
         :class="[
           'p-1.5 sm:p-2 rounded-lg transition-all w-16 h-16 sm:w-25 sm:h-25 flex flex-col items-center justify-center',
-          heldPiece ? 'cursor-grab active:cursor-grabbing' : '',
-          heldPiece && selectedPiece === heldPiece ? 'bg-blue-700 scale-110' : '',
-          heldPiece ? 'bg-gray-700/50 border-2 border-dashed border-gray-500' : 'bg-purple-600/30 border-2 border-dashed border-purple-500',
-          !heldPiece && isHoveringHoldArea && canUseHold ? 'bg-purple-600/60 border-purple-400 scale-110' : '',
-          !heldPiece && !canUseHold ? 'opacity-50 cursor-not-allowed' : '',
-          heldPiece && isDragging && draggedPiece === heldPiece ? 'opacity-50' : '',
+          'bg-purple-600/30 border-2 border-dashed border-purple-500',
+          isHoveringHoldArea && canUseHold ? 'bg-purple-600/60 border-purple-400 scale-110' : '',
+          !canUseHold ? 'opacity-50 cursor-not-allowed' : '',
         ]"
-        @click="heldPiece && emit('select-held-piece')"
-        @mousedown="(e) => heldPiece && emit('drag-start-held', e)"
-        @touchstart="(e) => heldPiece && emit('drag-start-held', e)"
       >
-        <div
-          v-if="heldPiece"
-          class="grid gap-0.5"
-          :style="{
-            gridTemplateColumns: `repeat(${heldPiece.shape[0]?.length || 0}, 15px)`,
-            gridTemplateRows: `repeat(${heldPiece.shape.length}, 15px)`,
-          }"
-        >
-          <div v-for="(row, r) in heldPiece.shape" :key="`held-row-${r}`" class="contents">
-            <div
-              v-for="(cell, c) in row"
-              :key="`held-cell-${r}-${c}`"
-              :class="cell === 1 ? 'bg-current' : 'bg-transparent'"
-              :style="{ color: heldPiece.color }"
-              class="rounded-sm"
-            />
-          </div>
+        <div class="text-lg sm:text-2xl mb-0.5">📦</div>
+        <div class="text-2xs sm:text-xs text-center font-medium" :class="canUseHold ? 'text-purple-300' : 'text-neutral-500'">
+          {{ isHoveringHoldArea ? 'Drop!' : 'Hold' }}
         </div>
-        <template v-else>
-          <div class="text-lg sm:text-2xl mb-0.5">📦</div>
-          <div class="text-2xs sm:text-xs text-center font-medium" :class="canUseHold ? 'text-purple-300' : 'text-neutral-500'">
-            {{ isHoveringHoldArea ? 'Drop!' : 'Hold' }}
-          </div>
-          <div v-if="holdDisplayText" class="text-2xs text-center" :class="canUseHold ? 'text-purple-200' : 'text-neutral-600'">
-            {{ holdDisplayText }}
-          </div>
-        </template>
+        <div v-if="holdDisplayText" class="text-2xs text-center" :class="canUseHold ? 'text-purple-200' : 'text-neutral-600'">
+          {{ holdDisplayText }}
+        </div>
       </div>
     </div>
   </div>

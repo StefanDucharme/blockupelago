@@ -1293,15 +1293,15 @@
             <section class="space-y-3">
               <h3 class="section-heading">Grant Rewards</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2">
-                <button type="button" class="btn-secondary w-full text-xs" @click="totalScore += 100">📊 +100 Score</button>
-                <button type="button" class="btn-secondary w-full text-xs" @click="totalScore += 1000">📊 +1000 Score</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="totalScore += 100">+100 Score</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="totalScore += 1000">+1000 Score</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addRotateAbility()">+ Rotate (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addUndoAbility()">+ Undo (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addRemoveBlock()">+ Remove Block (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addHoldAbility()">+ Hold (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addMirrorAbility()">+ Mirror (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addShrinkAbility()">+ Shrink (1 use)</button>
-                <button type="button" class="btn-secondary w-full text-xs" @click="totalGemsCollected++">💎 Give Gem</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="totalGemsCollected++">+ Give Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="spawnGem()">💎 Spawn Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addPieceSlot()">+ Piece Slot</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addScoreMultiplier(0.1)">+ 0.1x Score Multiplier</button>

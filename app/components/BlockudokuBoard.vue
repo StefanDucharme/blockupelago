@@ -86,15 +86,26 @@
     canUseAbility('remove', props.gameMode, props.removeBlockUses, props.freeRemove || false, props.totalGemsCollected),
   );
 
-  // Check if a specific piece can be rotated (either has resources or piece already rotated)
+  // Check if a specific piece can be rotated
+  // A piece can be rotated if: user has rotate ability OR piece has already been rotated (making it free)
   function canRotatePiece(piece: Piece): boolean {
-    return canTransformPieceFree('rotate', piece) || canUseRotate.value;
+    return canUseRotate.value || piece.hasBeenRotated === true;
   }
 
-  // Check if a specific piece can be mirrored (either has resources or piece already mirrored)
+  // Check if a specific piece can be mirrored
+  // A piece can be mirrored if: user has mirror ability OR piece has already been mirrored (making it free)
   function canMirrorPiece(piece: Piece): boolean {
-    return canTransformPieceFree('mirror', piece) || canUseMirror.value;
+    return canUseMirror.value || piece.hasBeenMirrored === true;
   }
+
+  // Check abilities for held piece
+  const canRotateHeld = computed(() => {
+    return props.heldPiece ? canRotatePiece(props.heldPiece) : false;
+  });
+
+  const canMirrorHeld = computed(() => {
+    return props.heldPiece ? canMirrorPiece(props.heldPiece) : false;
+  });
 
   // Check if a piece can be placed anywhere on the grid in its current state
   function isPiecePlaceable(piece: Piece): boolean {
@@ -394,11 +405,20 @@
         :is-dragging="isDragging"
         :dragged-piece="draggedPiece"
         :selected-piece="selectedPiece"
+        :can-rotate-held="canRotateHeld"
+        :can-mirror-held="canMirrorHeld"
+        :can-shrink-held="canUseShrink"
+        :rotate-display-text="rotateDisplayText"
+        :mirror-display-text="mirrorDisplayText"
+        :shrink-display-text="shrinkDisplayText"
         @undo="emit('undo')"
         @toggle-remove-mode="toggleRemoveMode"
         @select-held-piece="selectPiece(heldPiece!)"
         @drag-start-held="(e) => handleDragStart(e, heldPiece!)"
         @hold-area-ref="(ref) => (holdAreaRef = ref)"
+        @rotate-held="heldPiece && emit('rotate-piece', heldPiece)"
+        @mirror-held="heldPiece && emit('mirror-piece', heldPiece)"
+        @shrink-held="heldPiece && emit('shrink-piece', heldPiece)"
       />
     </div>
 
