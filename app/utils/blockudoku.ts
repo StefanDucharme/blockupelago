@@ -1,24 +1,6 @@
 // Blockudoku game logic utilities
-
-export type BlockCell = 0 | 1 | 2; // 0 = empty, 1 = filled, 2 = gem
-export type BlockGrid = BlockCell[][];
-
-// Gem cell info for Archipelago checks
-export interface GemCell {
-  row: number;
-  col: number;
-  checkId: number; // Archipelago location ID
-}
-
-// Polyomino piece definition
-export interface Piece {
-  id: string;
-  name: string;
-  shape: BlockCell[][];
-  color: string;
-  hasBeenRotated?: boolean; // Track if this piece has been rotated (for free subsequent rotations)
-  hasBeenMirrored?: boolean; // Track if this piece has been mirrored (for free subsequent mirrors)
-}
+// Types are defined in types.ts to avoid circular dependencies
+import type { BlockCell, BlockGrid, GemCell, Piece } from './types';
 
 // All available piece types
 export const ALL_PIECES: Piece[] = [
@@ -483,4 +465,93 @@ export function generatePieces(availablePieces: Piece[], count: number, sizeRati
     }
   }
   return pieces;
+}
+
+// ============================================
+// PIECE TRANSFORMATIONS
+// ============================================
+
+/**
+ * Rotate a piece 90 degrees clockwise
+ */
+export function rotatePiece(piece: Piece): Piece {
+  const oldShape = piece.shape;
+  const rows = oldShape.length;
+  const cols = oldShape[0]?.length || 0;
+
+  const newShape: BlockCell[][] = [];
+  for (let c = 0; c < cols; c++) {
+    const newRow: BlockCell[] = [];
+    for (let r = rows - 1; r >= 0; r--) {
+      newRow.push((oldShape[r]?.[c] || 0) as BlockCell);
+    }
+    newShape.push(newRow);
+  }
+
+  return { ...piece, shape: newShape, hasBeenRotated: true };
+}
+
+/**
+ * Mirror a piece horizontally (flip left-right)
+ */
+export function mirrorPiece(piece: Piece): Piece {
+  const newShape = piece.shape.map((row) => [...row].reverse());
+  return { ...piece, shape: newShape, hasBeenMirrored: true };
+}
+
+/**
+ * Shrink a piece by removing outer blocks
+ * Returns null if piece cannot be shrunk further
+ */
+export function shrinkPiece(piece: Piece): Piece | null {
+  const shape = piece.shape;
+  const rows = shape.length;
+  const cols = shape[0]?.length || 0;
+
+  // Find bounds of filled cells
+  let minRow = rows;
+  let maxRow = -1;
+  let minCol = cols;
+  let maxCol = -1;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (shape[r]?.[c] === 1) {
+        minRow = Math.min(minRow, r);
+        maxRow = Math.max(maxRow, r);
+        minCol = Math.min(minCol, c);
+        maxCol = Math.max(maxCol, c);
+      }
+    }
+  }
+
+  // If piece is already 1x1, can't shrink
+  if (minRow === maxRow && minCol === maxCol) {
+    return null;
+  }
+
+  // Remove one layer from each side if possible
+  const newMinRow = Math.min(minRow + 1, maxRow);
+  const newMaxRow = Math.max(maxRow - 1, minRow);
+  const newMinCol = Math.min(minCol + 1, maxCol);
+  const newMaxCol = Math.max(maxCol - 1, minCol);
+
+  // Build new shape
+  const newShape: BlockCell[][] = [];
+  for (let r = newMinRow; r <= newMaxRow; r++) {
+    const newRow: BlockCell[] = [];
+    for (let c = newMinCol; c <= newMaxCol; c++) {
+      newRow.push((shape[r]?.[c] || 0) as BlockCell);
+    }
+    if (newRow.length > 0) {
+      newShape.push(newRow);
+    }
+  }
+
+  // If nothing left, return null
+  if (newShape.length === 0 || !newShape.some((row) => row.some((cell) => cell === 1))) {
+    return null;
+  }
+
+  return { ...piece, shape: newShape };
 }

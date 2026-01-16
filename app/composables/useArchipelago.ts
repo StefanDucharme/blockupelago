@@ -1,8 +1,8 @@
 import type { Client, Item } from 'archipelago.js';
 import { clientStatuses, itemsHandlingFlags } from 'archipelago.js';
 import { useArchipelagoItems, AP_LOCATIONS } from './useArchipelagoItems';
-
-type Status = 'disconnected' | 'connecting' | 'connected' | 'error';
+import type { ConnectionStatus, MessageLogEntry } from '~/utils/types';
+import { DEATH_LINK_COOLDOWN_MS, MAX_MESSAGE_LOG_ENTRIES } from '~/utils/constants';
 
 // Track if event handlers have been set up (to avoid duplicates)
 let eventHandlersInitialized = false;
@@ -25,7 +25,7 @@ export function useArchipelago() {
   const slot = useState('ap_slot', () => 'BlockupelagoP1');
   const password = useState('ap_password', () => '');
 
-  const status = useState<Status>('ap_status', () => 'disconnected');
+  const status = useState<ConnectionStatus>('ap_status', () => 'disconnected');
   const lastMessage = useState<string>('ap_lastMessage', () => '');
 
   // Secure connection setting (true = wss://, false = ws://)
@@ -45,16 +45,16 @@ export function useArchipelago() {
   const slotData = useState<Record<string, any>>('ap_slotData', () => ({}));
 
   // Chat/event log
-  const messageLog = useState<Array<{ time: Date; text: string; type: 'info' | 'item' | 'chat' | 'error' }>>('ap_messageLog', () => []);
+  const messageLog = useState<MessageLogEntry[]>('ap_messageLog', () => []);
 
   // Get items composable
   const items = useArchipelagoItems();
 
   function addLogMessage(text: string, type: 'info' | 'item' | 'chat' | 'error' = 'info') {
     messageLog.value.push({ time: new Date(), text, type });
-    // Keep log limited to last 100 messages
-    if (messageLog.value.length > 100) {
-      messageLog.value = messageLog.value.slice(-100);
+    // Keep log limited to last N messages
+    if (messageLog.value.length > MAX_MESSAGE_LOG_ENTRIES) {
+      messageLog.value = messageLog.value.slice(-MAX_MESSAGE_LOG_ENTRIES);
     }
   }
 
@@ -151,7 +151,7 @@ export function useArchipelago() {
 
     // Prevent death loops - ignore if we just died
     const now = Date.now();
-    if (now - lastDeathTime.value < 3000) return;
+    if (now - lastDeathTime.value < DEATH_LINK_COOLDOWN_MS) return;
 
     addLogMessage(`☠️ Death Link from ${source}: ${cause}`, 'error');
     // TODO: Handle death link in Blockudoku (e.g., end current game)

@@ -1,7 +1,9 @@
 <script setup lang="ts">
   import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-  import type { Piece, BlockGrid } from '~/utils/blockudoku';
   import { canPlacePiece, placePiece, getCellsThatWouldClear } from '~/utils/blockudoku';
+  import type { GameMode, Piece, BlockGrid } from '~/utils/types';
+  import { MOBILE_BREAKPOINT_PX, CELL_SIZE_MOBILE, CELL_SIZE_DESKTOP } from '~/utils/constants';
+  import { canUseAbility, getAbilityDisplayText, canTransformPieceFree } from '~/utils/abilities';
 
   const props = defineProps<{
     grid: BlockGrid;
@@ -58,69 +60,37 @@
   // Calculate cell size based on grid size and screen size
   const cellSize = computed(() => {
     const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
-    const isMobile = screenWidth < 640;
+    const isMobile = screenWidth < MOBILE_BREAKPOINT_PX;
 
     if (isMobile) {
-      // On mobile, make cells smaller to fit
-      if (props.gridSize === 6) return 34;
-      if (props.gridSize === 7) return 28;
-      return 22; // 9x9
+      return CELL_SIZE_MOBILE[props.gridSize as keyof typeof CELL_SIZE_MOBILE] || CELL_SIZE_MOBILE[9];
     }
-
-    const maxSize = 40;
-    const minSize = 25;
-    if (props.gridSize === 6) return maxSize;
-    if (props.gridSize === 7) return 35;
-    return minSize; // 9x9
+    return CELL_SIZE_DESKTOP[props.gridSize as keyof typeof CELL_SIZE_DESKTOP] || CELL_SIZE_DESKTOP[9];
   });
 
   // Check ability availability based on game mode
-  const canUseUndo = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.freeUndo || props.totalGemsCollected > 0;
-    }
-    return props.undoUses > 0;
-  });
+  const canUseUndo = computed(() => canUseAbility('undo', props.gameMode, props.undoUses, props.freeUndo || false, props.totalGemsCollected));
 
-  const canUseRotate = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.freeRotate || props.totalGemsCollected > 0;
-    }
-    return props.rotateUses > 0;
-  });
+  const canUseRotate = computed(() => canUseAbility('rotate', props.gameMode, props.rotateUses, props.freeRotate || false, props.totalGemsCollected));
 
-  const canUseMirror = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.freeMirror || props.totalGemsCollected > 0;
-    }
-    return props.mirrorUses > 0;
-  });
+  const canUseMirror = computed(() => canUseAbility('mirror', props.gameMode, props.mirrorUses, props.freeMirror || false, props.totalGemsCollected));
 
-  const canUseShrink = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.freeShrink || props.totalGemsCollected > 0;
-    }
-    return props.shrinkUses > 0;
-  });
+  const canUseShrink = computed(() => canUseAbility('shrink', props.gameMode, props.shrinkUses, props.freeShrink || false, props.totalGemsCollected));
+
+  const canUseHold = computed(() => canUseAbility('hold', props.gameMode, props.holdUses, props.freeHold || false, props.totalGemsCollected));
+
+  const canUseRemoveBlock = computed(() =>
+    canUseAbility('remove', props.gameMode, props.removeBlockUses, props.freeRemove || false, props.totalGemsCollected),
+  );
 
   // Check if a specific piece can be rotated (either has resources or piece already rotated)
   function canRotatePiece(piece: Piece): boolean {
-    // If piece has already been rotated, subsequent rotations are free
-    if (piece.hasBeenRotated) {
-      return true;
-    }
-    // Otherwise, check if we have resources for the first rotation
-    return canUseRotate.value;
+    return canTransformPieceFree('rotate', piece) || canUseRotate.value;
   }
 
   // Check if a specific piece can be mirrored (either has resources or piece already mirrored)
   function canMirrorPiece(piece: Piece): boolean {
-    // If piece has already been mirrored, subsequent mirrors are free
-    if (piece.hasBeenMirrored) {
-      return true;
-    }
-    // Otherwise, check if we have resources for the first mirror
-    return canUseMirror.value;
+    return canTransformPieceFree('mirror', piece) || canUseMirror.value;
   }
 
   // Check if a piece can be placed anywhere on the grid in its current state
@@ -135,62 +105,13 @@
     return false;
   }
 
-  const canUseHold = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.freeHold || props.totalGemsCollected > 0;
-    }
-    return props.holdUses > 0;
-  });
-
-  const canUseRemoveBlock = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.freeRemove || props.totalGemsCollected > 0;
-    }
-    return props.removeBlockUses > 0;
-  });
-
   // Display text for ability counts
-  const undoDisplayText = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.freeUndo ? '' : `(💎)`;
-    }
-    return props.undoUses;
-  });
-
-  const rotateDisplayText = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.freeRotate ? '' : `(💎)`;
-    }
-    return props.rotateUses;
-  });
-
-  const holdDisplayText = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.freeHold ? '' : `(💎)`;
-    }
-    return props.holdUses;
-  });
-
-  const mirrorDisplayText = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.freeMirror ? '' : `(💎)`;
-    }
-    return props.mirrorUses;
-  });
-
-  const shrinkDisplayText = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.freeShrink ? '' : `(💎)`;
-    }
-    return props.shrinkUses;
-  });
-
-  const removeBlockDisplayText = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.freeRemove ? '' : `(💎)`;
-    }
-    return props.removeBlockUses;
-  });
+  const undoDisplayText = computed(() => getAbilityDisplayText(props.gameMode, props.freeUndo || false, props.undoUses));
+  const rotateDisplayText = computed(() => getAbilityDisplayText(props.gameMode, props.freeRotate || false, props.rotateUses));
+  const holdDisplayText = computed(() => getAbilityDisplayText(props.gameMode, props.freeHold || false, props.holdUses));
+  const mirrorDisplayText = computed(() => getAbilityDisplayText(props.gameMode, props.freeMirror || false, props.mirrorUses));
+  const shrinkDisplayText = computed(() => getAbilityDisplayText(props.gameMode, props.freeShrink || false, props.shrinkUses));
+  const removeBlockDisplayText = computed(() => getAbilityDisplayText(props.gameMode, props.freeRemove || false, props.removeBlockUses));
 
   // Check if piece can be placed at hovered position
   const canPlaceAtHovered = computed(() => {

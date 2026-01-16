@@ -7,6 +7,7 @@
   import { useArchipelago } from '~/composables/useArchipelago';
   import { clearAllPersistence } from '~/composables/usePersistence';
   import { ALL_PIECES, STARTER_PIECE_IDS } from '~/utils/blockudoku';
+  import { TABLET_BREAKPOINT_PX } from '~/utils/constants';
 
   // Tab management
   type MobileTab = 'game' | 'archipelago' | 'checks' | 'chat' | 'settings' | 'debug';
@@ -22,7 +23,7 @@
 
   onMounted(() => {
     const checkMobile = () => {
-      isMobile.value = window.innerWidth < 1024;
+      isMobile.value = window.innerWidth < TABLET_BREAKPOINT_PX;
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
