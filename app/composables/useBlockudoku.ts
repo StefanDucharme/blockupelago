@@ -51,7 +51,7 @@ export function useBlockudoku() {
   // Abilities
   const rotateUses = usePersistentRef('blockudoku_rotate_uses', 0);
   const canUndo = usePersistentRef('blockudoku_can_undo', false);
-  const undoUses = usePersistentRef('blockudoku_undo_uses', 0);
+  const undoUses = usePersistentRef('blockudoku_undo_uses', 1);
   const removeBlockUses = usePersistentRef('blockudoku_remove_uses', 0);
   const holdUses = usePersistentRef('blockudoku_hold_uses', 0);
   const heldPiece = usePersistentRef<Piece | null>('blockudoku_held_piece', null);
@@ -172,7 +172,7 @@ export function useBlockudoku() {
     claimedMilestones.value = [];
     rotateUses.value = 0;
     canUndo.value = false;
-    undoUses.value = 0;
+    undoUses.value = 1;
     removeBlockUses.value = 0;
     holdUses.value = 0;
     scoreMultiplier.value = 1.0;
@@ -487,20 +487,18 @@ export function useBlockudoku() {
   // Single Player Mode Milestones
   const MILESTONES = [
     { id: 1, score: 100, reward: { type: 'piece', value: 1 }, description: 'Unlock 1 new piece' },
-    { id: 2, score: 250, reward: { type: 'rotate', value: 3 }, description: 'Unlock Rotate ability (3 uses)' },
+    { id: 2, score: 250, reward: { type: 'rotate', value: 3 }, description: 'Rotate (3 uses)' },
     { id: 3, score: 500, reward: { type: 'piece', value: 1 }, description: 'Unlock 1 new piece' },
     { id: 4, score: 750, reward: { type: 'slot', value: 1 }, description: 'Unlock 4th piece slot' },
-    { id: 5, score: 1000, reward: { type: 'hold', value: 3 }, description: 'Unlock Hold Piece (3 uses)' },
+    { id: 5, score: 1000, reward: { type: 'hold', value: 3 }, description: 'Hold Piece (3 uses)' },
     { id: 6, score: 1500, reward: { type: 'piece', value: 2 }, description: 'Unlock 2 new pieces' },
-    { id: 7, score: 2000, reward: { type: 'undo', value: 3 }, description: 'Unlock Undo (3 uses)' },
+    { id: 7, score: 2000, reward: { type: 'undo', value: 3 }, description: 'Undo (3 uses)' },
     { id: 8, score: 2500, reward: { type: 'removeBlock', value: 2 }, description: 'Remove Block (2 uses)' },
     { id: 9, score: 3000, reward: { type: 'piece', value: 2 }, description: 'Unlock 2 new pieces' },
     { id: 10, score: 4000, reward: { type: 'slot', value: 1 }, description: 'Unlock 5th piece slot' },
-    { id: 11, score: 5000, reward: { type: 'multiplier', value: 0.25 }, description: '1.35x Score Multiplier' },
-    { id: 12, score: 6000, reward: { type: 'gridSize', value: 9 }, description: 'Unlock 9x9 Grid' },
-    { id: 13, score: 7500, reward: { type: 'piece', value: 3 }, description: 'Unlock 3 new pieces' },
-    { id: 14, score: 10000, reward: { type: 'removeBlock', value: 3 }, description: 'Remove Block (3 uses)' },
-    { id: 15, score: 15000, reward: { type: 'gridSize', value: 12 }, description: 'Unlock 12x12 Grid' },
+    { id: 11, score: 5000, reward: { type: 'multiplier', value: 0.25 }, description: '1.25x Score Multiplier' },
+    { id: 12, score: 6000, reward: { type: 'piece', value: 3 }, description: 'Unlock 3 new pieces' },
+    { id: 13, score: 10000, reward: { type: 'removeBlock', value: 3 }, description: 'Remove Block (3 uses)' },
   ];
 
   // Check and grant single player rewards
@@ -523,8 +521,7 @@ export function useBlockudoku() {
             toUnlock.forEach((piece) => unlockPiece(piece.name));
             break;
           case 'undo':
-            addUndoAbility();
-            undoUses.value += milestone.reward.value - 1;
+            undoUses.value += milestone.reward.value;
             break;
           case 'rotate':
             rotateUses.value += milestone.reward.value;

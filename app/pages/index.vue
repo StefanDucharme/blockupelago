@@ -5,6 +5,7 @@
   import { useBlockudoku } from '~/composables/useBlockudoku';
   import { useArchipelagoItems } from '~/composables/useArchipelagoItems';
   import { useArchipelago } from '~/composables/useArchipelago';
+  import { ALL_PIECES } from '~/utils/blockudoku';
 
   // Tab management
   type MobileTab = 'game' | 'archipelago' | 'settings' | 'shop' | 'debug';
@@ -459,8 +460,28 @@
 
             <section v-if="singlePlayerMode" class="space-y-4">
               <h3 class="section-heading">Unlocked Pieces ({{ unlockedPieceIds.length }})</h3>
-              <div class="bg-neutral-800/30 rounded-sm p-4 text-xs text-neutral-300">
-                {{ unlockedPieceIds.join(', ') }}
+              <div class="bg-neutral-800/30 rounded-sm p-4">
+                <div class="grid grid-cols-2 gap-3">
+                  <div
+                    v-for="piece in ALL_PIECES.filter((p) => unlockedPieceIds.includes(p.id))"
+                    :key="piece.id"
+                    class="bg-neutral-900/50 rounded p-2"
+                  >
+                    <div class="text-xs text-neutral-300 mb-2">{{ piece.name }}</div>
+                    <div class="flex items-center justify-center">
+                      <div class="inline-grid gap-0.5">
+                        <div v-for="(row, i) in piece.shape" :key="i" class="flex gap-0.5">
+                          <div
+                            v-for="(cell, j) in row"
+                            :key="j"
+                            :style="{ backgroundColor: cell ? piece.color : 'transparent' }"
+                            class="w-4 h-4 rounded-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </section>
 
@@ -477,7 +498,6 @@
                     </div>
                     <div class="text-neutral-400 ml-5">{{ milestone.description }}</div>
                   </div>
-                  isTabVisible('shop')
                 </div>
               </div>
             </section>
