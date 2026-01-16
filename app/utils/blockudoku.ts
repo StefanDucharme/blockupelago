@@ -147,16 +147,6 @@ export const ALL_PIECES: Piece[] = [
     color: '#d946ef',
   },
   {
-    id: 'block_3x3',
-    name: '3x3 Block',
-    shape: [
-      [1, 1, 1],
-      [1, 1, 1],
-      [1, 1, 1],
-    ],
-    color: '#ec4899',
-  },
-  {
     id: 'corner_3x3',
     name: '3x3 Corner',
     shape: [
@@ -187,6 +177,10 @@ export const ALL_PIECES: Piece[] = [
     color: '#dc2626',
   },
 ];
+
+// Starter pieces that are always unlocked in Archipelago mode
+// These should NOT be included in the Archipelago item pool
+export const STARTER_PIECE_IDS = ['tromino_l', 'tetromino_t', 'tetromino_l'];
 
 // Create an empty BlockGrid
 export function makeGrid(rows: number, cols: number): BlockGrid {

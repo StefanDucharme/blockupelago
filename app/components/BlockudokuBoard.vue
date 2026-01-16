@@ -311,21 +311,11 @@
 
 <template>
   <div class="flex flex-col items-center gap-4 sm:gap-6 p-2 sm:p-4">
-    <!-- Score and New Game Button -->
-    <div class="flex items-center justify-between w-full max-w-4xl min-h-10">
-      <div class="text-xl sm:text-2xl font-bold">
-        <span v-if="scoreMultiplier > 1" class="text-xs sm:text-sm text-green-400"> (×{{ scoreMultiplier.toFixed(1) }}) </span>
-      </div>
-
-      <div class="flex gap-2">
-        <button
-          v-if="isGameOver"
-          @click="emit('new-game')"
-          class="px-3 sm:px-4 py-1 bg-green-600 hover:bg-green-700 rounded font-bold text-sm sm:text-base"
-        >
-          New Game
-        </button>
-      </div>
+    <!-- New Game Button -->
+    <div v-if="isGameOver" class="flex items-center justify-center w-full max-w-4xl">
+      <button @click="emit('new-game')" class="px-4 sm:px-6 py-2 bg-green-600 hover:bg-green-700 rounded font-bold text-sm sm:text-base">
+        🎮 New Game
+      </button>
     </div>
 
     <!-- Game Over Message -->

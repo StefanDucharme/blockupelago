@@ -65,11 +65,19 @@ export function useArchipelago() {
 
     // Handle received items
     client.items.on('itemsReceived', (receivedItems: Item[], startingIndex: number) => {
+      console.log('[AP → Client] itemsReceived event:', {
+        receivedItems,
+        startingIndex,
+        highestProcessed: highestItemIndexProcessed,
+        totalItems: receivedItems.length,
+      });
+
       for (let i = 0; i < receivedItems.length; i++) {
         const currentIndex = startingIndex + i;
 
         // Skip items we've already processed
         if (currentIndex <= highestItemIndexProcessed) {
+          console.log('[AP → Client] Skipping already processed item at index', currentIndex);
           continue;
         }
 
@@ -82,28 +90,46 @@ export function useArchipelago() {
         const item = receivedItems[i];
         if (!item) continue; // Safety check
 
+        console.log('[AP → Client] Processing item:', { index: currentIndex, itemId: item.id, item });
+
         // item.id is the item ID from the AP world
         const itemName = handleItemReceived(item.id);
         if (itemName) {
-          // Format: BlockupelagoPlayer2 sent Extra Cooldown Trap to Player2 (Complete 2 5x5 Puzzles)
+          // Format: Player1 sent Tromino I to You from Location "Reach 1000 Points"
           const sender = item.sender?.name || 'Unknown';
           const receiver = slot.value;
-          let extra = '';
+
+          // Try to get location name if available
+          let locationInfo = '';
           if (item.locationId) {
-            extra = ` (Location #${item.locationId})`;
+            // You could map locationId to location name here if needed
+            locationInfo = ` from location #${item.locationId}`;
           }
-          addLogMessage(`${sender} sent ${itemName} to ${receiver}${extra}`.replace(/ ,/g, ''), 'item');
+
+          // Add item class info
+          let itemClass = '';
+          if (itemName.includes('Ability') || itemName.includes('Slot')) {
+            itemClass = ' [Ability]';
+          } else if (itemName.includes('Multiplier')) {
+            itemClass = ' [Score Boost]';
+          } else {
+            itemClass = ' [Piece]';
+          }
+
+          addLogMessage(`📦 ${sender} → ${receiver}: ${itemName}${itemClass}${locationInfo}`.replace(/ ,/g, ''), 'item');
         }
       }
     });
 
     // Handle chat messages
     client.messages.on('message', (content: string) => {
+      console.log('[AP → Client] Chat message:', content);
       addLogMessage(content, 'chat');
     });
 
     // Handle disconnection
     client.socket.on('disconnected', () => {
+      console.log('[AP] Disconnected from server');
       status.value = 'disconnected';
       lastMessage.value = 'Disconnected from server.';
       addLogMessage('Connection lost.', 'error');
@@ -111,6 +137,7 @@ export function useArchipelago() {
 
     // Handle bounced packets (for Death Link)
     client.socket.on('bounced', (packet: any, data: any) => {
+      console.log('[AP → Client] Bounced packet:', { packet, data });
       if (data?.time && data?.cause && data?.source) {
         // This is a Death Link
         handleDeathLinkReceived(data.source, data.cause);
@@ -153,6 +180,7 @@ export function useArchipelago() {
 
   async function connect() {
     try {
+      console.log('[AP] Initiating connection...');
       status.value = 'connecting';
       lastMessage.value = '';
       goalCompleted.value = false;
@@ -169,6 +197,8 @@ export function useArchipelago() {
       const protocol = useSecureConnection.value ? 'wss' : 'ws';
       const url = `${protocol}://${host.value}:${port.value}`;
 
+      console.log('[Client → AP] Connecting to:', url, 'as', slot.value);
+
       // Build tags array
       const tags: string[] = [];
       if (deathLinkEnabled.value) {
@@ -182,6 +212,9 @@ export function useArchipelago() {
         slotData: true,
         tags,
       });
+
+      console.log('[AP → Client] Login successful! Slot data:', receivedSlotData);
+      console.log('[AP → Client] Initial items received:', client.items.received?.length || 0);
 
       // Store slot data for use by items composable
       slotData.value = receivedSlotData as Record<string, any>;
@@ -198,11 +231,44 @@ export function useArchipelago() {
 
       // Update status to playing
       client.updateStatus(clientStatuses.playing);
+      console.log('[Client → AP] Status updated to PLAYING');
 
       // Check for items that should be received (handles initial connection and reconnection)
       // The itemsReceived event handler will process any items we haven't seen yet
       if (client.items.received && client.items.received.length > 0) {
+        console.log('[AP] Processing initial items:', client.items.received.length);
         addLogMessage(`Checking ${client.items.received.length} received items...`, 'info');
+
+        // Manually trigger processing of existing items
+        // This ensures items are processed even if the event didn't fire
+        const allItems = client.items.received;
+        for (let i = 0; i < allItems.length; i++) {
+          // Skip items we've already processed
+          if (i <= highestItemIndexProcessed) {
+            continue;
+          }
+
+          // Update the highest index we've processed and persist it
+          highestItemIndexProcessed = i;
+          if (import.meta.client) {
+            localStorage.setItem('blockupelago_ap_highestItemIndex', i.toString());
+          }
+
+          const item = allItems[i];
+          if (!item) continue;
+
+          console.log('[AP] Processing initial item:', { index: i, itemId: item.id, item });
+          const itemName = handleItemReceived(item.id);
+          if (itemName) {
+            const sender = item.sender?.name || 'Unknown';
+            const receiver = slot.value;
+            let extra = '';
+            if (item.locationId) {
+              extra = ` (Location #${item.locationId})`;
+            }
+            addLogMessage(`${sender} sent ${itemName} to ${receiver}${extra}`.replace(/ ,/g, ''), 'item');
+          }
+        }
       }
     } catch (e: any) {
       status.value = 'error';
@@ -239,12 +305,14 @@ export function useArchipelago() {
 
   // Send a location check to the server
   function checkLocation(locationId: number) {
+    console.log('[Client → AP] Checking location:', locationId);
     if (status.value !== 'connected') return;
     try {
       client.check(locationId);
       addLogMessage(`Location ${locationId} checked.`, 'info');
     } catch (e: any) {
       const errorMsg = e?.message ?? String(e);
+      console.error('[AP] Error checking location:', errorMsg);
       lastMessage.value = errorMsg;
       addLogMessage(`Error checking location: ${errorMsg}`, 'error');
     }
@@ -252,16 +320,18 @@ export function useArchipelago() {
 
   // Check multiple locations at once
   function checkLocations(locationIds: number[]) {
-    console.log('[DEBUG checkLocations] locationIds:', locationIds, 'status:', status.value);
+    console.log('[Client → AP] Checking locations:', locationIds, 'status:', status.value);
     if (status.value !== 'connected') {
-      console.log('[DEBUG checkLocations] Not connected, skipping');
+      console.log('[Client → AP] Not connected, skipping location checks');
       return;
     }
     try {
       client.check(...locationIds);
+      console.log('[Client → AP] Successfully sent location checks:', locationIds);
       addLogMessage(`Checked ${locationIds.length} location(s).`, 'info');
     } catch (e: any) {
       const errorMsg = e?.message ?? String(e);
+      console.error('[AP] Error checking locations:', errorMsg, e);
       lastMessage.value = errorMsg;
       addLogMessage(`Error checking locations: ${errorMsg}`, 'error');
     }
@@ -374,6 +444,14 @@ export function useArchipelago() {
     }
   }
 
+  // Debug: Complete a location and send to server immediately
+  function debugCompleteCheck(locationId: number) {
+    console.log('[Debug] Completing location check:', locationId);
+    items.debugCompleteLocation(locationId);
+    checkLocation(locationId);
+    addLogMessage(`🔧 Debug: Manually completed location #${locationId}`, 'info');
+  }
+
   return {
     host,
     port,
@@ -383,6 +461,7 @@ export function useArchipelago() {
     status,
     lastMessage,
     messageLog,
+    addLogMessage,
     slotData,
     deathLinkEnabled,
     goalCompleted,
@@ -397,6 +476,7 @@ export function useArchipelago() {
     toggleDeathLink,
     sendDeathLink,
     debugReceiveItem,
+    debugCompleteCheck,
     syncItems,
     say,
     // Expose items composable
