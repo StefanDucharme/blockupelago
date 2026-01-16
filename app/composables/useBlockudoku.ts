@@ -68,7 +68,7 @@ export function useBlockudoku() {
 
   // Abilities
   const rotateUses = usePersistentRef('blockudoku_rotate_uses', 0);
-  const undoUses = usePersistentRef('blockudoku_undo_uses', 1);
+  const undoUses = usePersistentRef('blockudoku_undo_uses', 0);
   const removeBlockUses = usePersistentRef('blockudoku_remove_uses', 0);
   const holdUses = usePersistentRef('blockudoku_hold_uses', 0);
   const heldPiece = usePersistentRef<Piece | null>('blockudoku_held_piece', null);
