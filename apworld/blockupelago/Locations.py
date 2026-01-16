@@ -24,8 +24,8 @@ class BlockudokuLocation(Location):
 # Score Milestones: 9000001-9000020 (20 milestones)
 # Line Clears: 9001001-9001030 (30 milestones)
 # Box Clears: 9002001-9002020 (20 milestones)
-# Combo Clears: 9003001-9003010 (10 milestones)
 # Pieces Placed: 9004001-9004025 (25 milestones)
+# Individual Gems: 9005001-9005100 (100 individual gem checks)
 
 location_table: Dict[str, BlockudokuLocationData] = {}
 
@@ -55,14 +55,6 @@ for i, clears in enumerate(box_clear_milestones, start=1):
         region="Game Area"
     )
 
-# Generate Combo Clear locations (multiple clears at once)
-combo_milestones = [1, 3, 5, 10, 15, 20, 25, 30, 40, 50]
-for i, combos in enumerate(combo_milestones, start=1):
-    location_table[f"Achieve {combos} Combo Clear{'s' if combos > 1 else ''}"] = BlockudokuLocationData(
-        code=9003000 + i,
-        region="Game Area"
-    )
-
 # Generate Pieces Placed locations
 piece_milestones = [10, 25, 50, 75, 100, 150, 200, 250, 300, 400, 500, 600, 700, 800, 900,
                    1000, 1250, 1500, 1750, 2000, 2500, 3000, 3500, 4000, 5000]
@@ -72,15 +64,19 @@ for i, pieces in enumerate(piece_milestones, start=1):
         region="Game Area"
     )
 
-    location_table[f"Complete {i} 20x20 Puzzle{'s' if i > 1 else ''}"] = blockupelagoLocationData(
-        code=9004000 + i,
-        region="Puzzle Area"
+# Generate Individual Gem Collection locations (each gem is a check, up to 100)
+for i in range(1, 101):
+    location_table[f"Collect Gem #{i}"] = BlockudokuLocationData(
+        code=9005000 + i,
+        region="Game Area"
+    )
+        region="Game Area"
     )
 
 # Add Victory event (no code)
-location_table["Goal"] = blockupelagoLocationData(
+location_table["Goal"] = BlockudokuLocationData(
     code=None,
-    region="Puzzle Area"
+    region="Game Area"
 )
 
 

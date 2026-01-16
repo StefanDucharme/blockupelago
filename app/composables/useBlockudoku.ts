@@ -12,7 +12,14 @@ import {
   generatePieces,
 } from '~/utils/blockudoku';
 import { usePersistentRef } from './usePersistence';
-import { getScoreLocationId, getLineClearLocationId, getBoxClearLocationId, getComboLocationId, getPieceLocationId } from './useArchipelagoItems';
+import {
+  getScoreLocationId,
+  getLineClearLocationId,
+  getBoxClearLocationId,
+  getPieceLocationId,
+  getGemLocationId,
+  MAX_GEM_CHECKS,
+} from './useArchipelagoItems';
 
 export type GameMode = 'free-play' | 'archipelago';
 
@@ -315,10 +322,14 @@ export function useBlockudoku() {
           .sort((a, b) => b - a)
           .forEach((index) => {
             const gem = gemCells.value[index];
-            if (gem) {
-              console.log('💎 Gem collected via line clear! Check ID:', gem.checkId);
+            if (gem && totalGemsCollected.value < MAX_GEM_CHECKS) {
+              console.log('💎 Gem collected via line clear! Gem #' + (totalGemsCollected.value + 1));
               totalGemsCollected.value++;
-              collectedGemChecks.value.push(gem.checkId);
+              // Send individual gem check
+              const gemCheckId = getGemLocationId(totalGemsCollected.value);
+              if (gemCheckId) {
+                collectedGemChecks.value.push(gemCheckId);
+              }
             }
             gemCells.value.splice(index, 1);
           });
@@ -327,9 +338,11 @@ export function useBlockudoku() {
         totalLinesCleared.value += clearResult.clearedRows.length + clearResult.clearedCols.length;
         totalBoxesCleared.value += clearResult.clearedBoxes.length;
 
-        // Count as combo if multiple clears
+        // Count as combo and increase score multiplier if multiple clears
         if (clearResult.totalClears > 1) {
           totalCombos.value++;
+          // Increase score multiplier by 2% per combo (0.02)
+          scoreMultiplier.value += 0.02;
         }
 
         // Calculate score
@@ -551,10 +564,6 @@ export function useBlockudoku() {
     // Check box clear milestones
     const boxCheck = getBoxClearLocationId(totalBoxesCleared.value);
     if (boxCheck) checks.push(boxCheck);
-
-    // Check combo milestones
-    const comboCheck = getComboLocationId(totalCombos.value);
-    if (comboCheck) checks.push(comboCheck);
 
     // Check pieces placed milestones
     const pieceCheck = getPieceLocationId(totalPiecesPlaced.value);

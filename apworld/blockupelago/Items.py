@@ -22,9 +22,8 @@ class BlockudokuItem(Item):
 
 # Item ID ranges (must match client's useArchipelagoItems.ts):
 # Piece Types:     8000001-8000019 (19 different polyomino pieces)
-# Grid Size:       8001001-8001003 (6x6, 7x7, 9x9 unlocks)
 # Piece Slots:     8002001-8002002 (4th and 5th piece slots)
-# Abilities:       8003001-8003004 (Rotate, Undo, Remove Block, Hint)
+# Abilities:       8003001-8003004 (Rotate, Undo, Remove Block, Hold)
 # Score Boosts:    8004001-8004003 (multipliers)
 # Event:           None (Victory)
 
@@ -51,11 +50,6 @@ item_table: Dict[str, BlockudokuItemData] = {
     "3x3 T-Shape": BlockudokuItemData(code=8000018, classification=ItemClassification.progression),
     "3x3 Cross": BlockudokuItemData(code=8000019, classification=ItemClassification.progression),
 
-    # === Grid Size Unlocks (Progression) ===
-    "6x6 Grid": BlockudokuItemData(code=8001001, classification=ItemClassification.progression),
-    "7x7 Grid": BlockudokuItemData(code=8001002, classification=ItemClassification.progression),
-    "9x9 Grid": BlockudokuItemData(code=8001003, classification=ItemClassification.progression),
-
     # === Piece Slots (Useful) ===
     "4th Piece Slot": BlockudokuItemData(code=8002001, classification=ItemClassification.useful),
     "5th Piece Slot": BlockudokuItemData(code=8002002, classification=ItemClassification.useful),
@@ -64,7 +58,7 @@ item_table: Dict[str, BlockudokuItemData] = {
     "Rotate Ability": BlockudokuItemData(code=8003001, classification=ItemClassification.useful),
     "Undo Ability": BlockudokuItemData(code=8003002, classification=ItemClassification.useful),
     "Remove Block": BlockudokuItemData(code=8003003, classification=ItemClassification.useful),
-    "Placement Hint": BlockudokuItemData(code=8003004, classification=ItemClassification.useful),
+    "Hold Ability": BlockudokuItemData(code=8003004, classification=ItemClassification.useful),
 
     # === Score Multipliers (Filler/Useful) ===
     "Score Multiplier +10%": BlockudokuItemData(code=8004001, classification=ItemClassification.filler),
@@ -83,10 +77,9 @@ item_groups: Dict[str, Set[str]] = {
         "Tetromino I", "Tetromino O", "Tetromino T", "Tetromino L", "Tetromino S",
         "Pentomino I", "Pentomino L", "Pentomino P", "Pentomino U", "Pentomino W", "Pentomino Plus",
         "3x3 Block", "3x3 Corner", "3x3 T-Shape", "3x3 Cross",
-        "6x6 Grid", "7x7 Grid", "9x9 Grid",
     },
     "Abilities": {
-        "Rotate Ability", "Undo Ability", "Remove Block", "Placement Hint",
+        "Rotate Ability", "Undo Ability", "Remove Block", "Hold Ability",
         "4th Piece Slot", "5th Piece Slot",
     },
     "Score Boosts": {
