@@ -76,6 +76,16 @@
     return props.rotateUses > 0;
   });
 
+  // Check if a specific piece can be rotated (either has resources or piece already rotated)
+  function canRotatePiece(piece: Piece): boolean {
+    // If piece has already been rotated, subsequent rotations are free
+    if (piece.hasBeenRotated) {
+      return true;
+    }
+    // Otherwise, check if we have resources for the first rotation
+    return canUseRotate.value;
+  }
+
   const canUseHold = computed(() => {
     if (props.gameMode === 'free-play') {
       return props.totalGemsCollected > 0;
@@ -463,13 +473,13 @@
         <div class="flex gap-1 sm:gap-2 h-7 sm:h-8">
           <button
             @click="emit('rotate-piece', piece)"
-            :disabled="!canUseRotate"
+            :disabled="!canRotatePiece(piece)"
             :class="[
               'flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors whitespace-nowrap',
-              canUseRotate ? 'bg-blue-600/50 hover:bg-blue-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
+              canRotatePiece(piece) ? 'bg-blue-600/50 hover:bg-blue-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
             ]"
           >
-            🔄 ({{ rotateDisplayText }})
+            🔃 ({{ rotateDisplayText }})
           </button>
           <button
             @click="emit('hold-piece', piece)"

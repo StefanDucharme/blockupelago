@@ -16,6 +16,7 @@ export interface Piece {
   name: string;
   shape: BlockCell[][];
   color: string;
+  hasBeenRotated?: boolean; // Track if this piece has been rotated (for free subsequent rotations)
 }
 
 // All available piece types
