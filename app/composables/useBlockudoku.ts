@@ -95,13 +95,53 @@ export function useBlockudoku() {
     return ALL_PIECES.filter((p) => unlockedPieceIds.value.includes(p.id));
   });
 
-  // Check if game is over (no valid placements)
+  // Check if game is over (no valid placements and no helpful abilities)
   function checkGameOver(): boolean {
     if (currentPieces.value.length === 0) {
       return false; // Will generate new pieces
     }
-    return !canPlaceAnyPiece(grid.value, currentPieces.value);
+
+    // If any piece can be placed, game continues
+    if (canPlaceAnyPiece(grid.value, currentPieces.value)) {
+      return false;
+    }
+
+    // Check if player has abilities that could help
+    const hasUndo = gameMode.value === 'free-play' ? totalGemsCollected.value > 0 : undoUses.value > 0 && lastMove.value !== null;
+    const hasRotate = gameMode.value === 'free-play' ? totalGemsCollected.value > 0 : rotateUses.value > 0;
+    const hasRemove = gameMode.value === 'free-play' ? totalGemsCollected.value > 0 : removeBlockUses.value > 0;
+
+    // If player has undo, they can always go back
+    if (hasUndo) {
+      return false;
+    }
+
+    // If player has rotate, check if rotating any piece would help
+    if (hasRotate) {
+      for (const piece of currentPieces.value) {
+        const rotatedPiece = applyRotation(piece);
+        if (canPlaceAnyPiece(grid.value, [rotatedPiece])) {
+          return false; // A rotation would make placement possible
+        }
+      }
+    }
+
+    // If player has remove block, there's a chance they could make space
+    if (hasRemove) {
+      return false;
+    }
+
+    // No valid moves and no helpful abilities
+    return true;
   }
+
+  // Check if game is potentially over (pieces can't be placed as-is, but abilities might help)
+  const isPotentialGameOver = computed(() => {
+    if (currentPieces.value.length === 0 || isGameOver.value) {
+      return false;
+    }
+    return !canPlaceAnyPiece(grid.value, currentPieces.value);
+  });
 
   // Helper function to rotate a piece shape
   function applyRotation(piece: Piece): Piece {
@@ -698,6 +738,7 @@ export function useBlockudoku() {
     totalScore,
     currentPieces,
     isGameOver,
+    isPotentialGameOver,
     availablePieces,
     clearingCells,
     gemCells,

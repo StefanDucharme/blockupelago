@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { ref, computed, onMounted, onUnmounted } from 'vue';
+  import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
   import type { Piece, BlockGrid } from '~/utils/blockudoku';
   import { canPlacePiece } from '~/utils/blockudoku';
 
@@ -8,6 +8,7 @@
     gridSize: number;
     currentPieces: Piece[];
     isGameOver: boolean;
+    isPotentialGameOver: boolean;
     totalScore: number;
     clearingCells: Set<string>;
     gemCells: { row: number; col: number; checkId: number }[];
@@ -84,6 +85,18 @@
     }
     // Otherwise, check if we have resources for the first rotation
     return canUseRotate.value;
+  }
+
+  // Check if a piece can be placed anywhere on the grid in its current state
+  function isPiecePlaceable(piece: Piece): boolean {
+    for (let r = 0; r < props.grid.length; r++) {
+      for (let c = 0; c < (props.grid[0]?.length || 0); c++) {
+        if (canPlacePiece(props.grid, piece, r, c)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   const canUseHold = computed(() => {
@@ -180,6 +193,17 @@
     selectedPiece.value = piece;
     removeMode.value = false;
   }
+
+  // Clear selected piece when current pieces change (e.g., new game)
+  watch(
+    () => props.currentPieces,
+    (newPieces, oldPieces) => {
+      // If the selected piece is no longer in the current pieces, clear it
+      if (selectedPiece.value && !newPieces.includes(selectedPiece.value)) {
+        selectedPiece.value = null;
+      }
+    },
+  );
 
   function handleCellClick(row: number, col: number) {
     if (removeMode.value) {
@@ -329,7 +353,7 @@
 <template>
   <div class="flex flex-col items-center gap-4 sm:gap-6 p-2 sm:p-4">
     <!-- New Game Button -->
-    <div v-if="isGameOver" class="flex items-center justify-center w-full max-w-4xl">
+    <div v-if="isGameOver || isPotentialGameOver" class="flex items-center justify-center w-full max-w-4xl">
       <button @click="emit('new-game')" class="px-4 sm:px-6 py-2 bg-green-600 hover:bg-green-700 rounded font-bold text-sm sm:text-base">
         🎮 New Game
       </button>
@@ -338,6 +362,9 @@
     <!-- Game Over Message -->
     <div class="min-h-6 sm:min-h-8 flex items-center justify-center">
       <div v-if="isGameOver" class="text-lg sm:text-2xl font-bold text-red-500 animate-pulse">Game Over! No valid moves remaining.</div>
+      <div v-else-if="isPotentialGameOver" class="text-sm sm:text-lg font-bold text-yellow-500 animate-pulse">
+        ⚠️ No pieces can be placed as-is. Try using abilities or start a new game!
+      </div>
     </div>
 
     <!-- Game Grid and Right Controls -->
@@ -418,7 +445,7 @@
           @click="emit('undo')"
           class="w-20 sm:w-25 px-2 py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-xs sm:text-sm font-medium"
         >
-          Undo<br />({{ undoDisplayText }})
+          Undo ({{ undoDisplayText }})
         </button>
 
         <!-- Remove Block Button -->
@@ -430,7 +457,7 @@
             removeMode ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700',
           ]"
         >
-          {{ removeMode ? 'Cancel' : `Remove` }}<br />({{ removeBlockDisplayText }})
+          {{ removeMode ? 'Cancel' : `Remove` }} ({{ removeBlockDisplayText }})
         </button>
       </div>
     </div>
@@ -444,6 +471,7 @@
               'p-2 sm:p-3 rounded-lg cursor-grab active:cursor-grabbing transition-all touch-none w-25 h-25 sm:w-30 sm:h-30',
               selectedPiece === piece ? 'bg-blue-700 scale-110' : 'bg-gray-700 hover:bg-gray-600',
               isDragging && draggedPiece === piece ? 'opacity-50' : '',
+              !isPiecePlaceable(piece) ? 'opacity-40 saturate-0' : '',
             ]"
             @click="selectPiece(piece)"
             @mousedown="(e) => handleDragStart(e, piece)"

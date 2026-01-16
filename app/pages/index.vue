@@ -43,6 +43,7 @@
     totalScore,
     currentPieces,
     isGameOver,
+    isPotentialGameOver,
     clearingCells,
     gemCells,
     totalLinesCleared,
@@ -649,6 +650,7 @@
           :grid-size="gridSize"
           :current-pieces="currentPieces"
           :is-game-over="isGameOver"
+          :is-potential-game-over="isPotentialGameOver"
           :total-score="totalScore"
           :clearing-cells="clearingCells"
           :gem-cells="gemCells"
