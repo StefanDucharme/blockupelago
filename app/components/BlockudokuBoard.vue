@@ -434,9 +434,29 @@
 
       <!-- Right Side Controls -->
       <div class="flex flex-col gap-1.5 sm:gap-3 items-center">
+        <!-- Undo Button -->
+        <button
+          v-if="canUseUndo"
+          @click="emit('undo')"
+          class="w-22 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-xs font-medium leading-tight"
+        >
+          Undo ({{ undoDisplayText }})
+        </button>
+
+        <!-- Remove Block Button -->
+        <button
+          v-if="canUseRemoveBlock"
+          @click="toggleRemoveMode"
+          :class="[
+            'w-22 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 rounded text-xs font-medium leading-tight',
+            removeMode ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700',
+          ]"
+        >
+          {{ removeMode ? 'Cancel' : `Remove` }} ({{ removeBlockDisplayText }})
+        </button>
+
         <!-- Hold Piece Area -->
         <div class="flex flex-col gap-1 sm:gap-2">
-          <div class="text-2xs sm:text-xs text-center text-neutral-400">📦 Held</div>
           <div
             v-if="heldPiece"
             :class="[
@@ -470,30 +490,9 @@
             v-else
             class="p-1.5 sm:p-2 rounded-lg transition-all w-16 h-16 sm:w-25 sm:h-25 flex items-center justify-center bg-gray-700/50 border-2 border-dashed border-gray-500"
           >
-            <div class="text-2xs sm:text-xs text-center text-neutral-500">Empty</div>
+            <div class="text-2xs sm:text-xs text-center text-neutral-500">📦 Hold</div>
           </div>
         </div>
-
-        <!-- Undo Button -->
-        <button
-          v-if="canUseUndo"
-          @click="emit('undo')"
-          class="w-20 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-[10px] sm:text-sm font-medium leading-tight"
-        >
-          Undo ({{ undoDisplayText }})
-        </button>
-
-        <!-- Remove Block Button -->
-        <button
-          v-if="canUseRemoveBlock"
-          @click="toggleRemoveMode"
-          :class="[
-            'w-20 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 rounded text-[10px] sm:text-sm font-medium leading-tight',
-            removeMode ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700',
-          ]"
-        >
-          {{ removeMode ? 'Cancel' : `Remove` }} ({{ removeBlockDisplayText }})
-        </button>
       </div>
     </div>
 
@@ -557,7 +556,7 @@
               canMirrorPiece(piece) ? 'bg-cyan-600/50 hover:bg-cyan-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
             ]"
           >
-            🪞 ({{ mirrorDisplayText }})
+            <span class="text-cyan-300">↔️</span> ({{ mirrorDisplayText }})
           </button>
           <button
             @click="emit('hold-piece', piece)"

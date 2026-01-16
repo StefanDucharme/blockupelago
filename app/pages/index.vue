@@ -1053,7 +1053,7 @@
                   </span>
                 </div>
                 <div class="flex items-center justify-between">
-                  <span class="text-neutral-300">🪞 Mirror Piece</span>
+                  <span class="text-neutral-300"><span class="text-cyan-400">↔️</span> Mirror Piece</span>
                   <span :class="gameMode === 'free-play' ? 'text-pink-400' : mirrorUses > 0 ? 'text-green-400' : 'text-neutral-500'">
                     {{ gameMode === 'free-play' ? '1 gem' : mirrorUses }}
                   </span>
