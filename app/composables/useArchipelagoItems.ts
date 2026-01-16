@@ -40,6 +40,7 @@ export const AP_ITEMS = {
   UNDO_ABILITY: 8003002,
   REMOVE_BLOCK: 8003003,
   HOLD_ABILITY: 8003004,
+  MIRROR_ABILITY: 8003005,
 
   // Score Multipliers (8004xxx)
   SCORE_MULT_10: 8004001,
@@ -76,6 +77,7 @@ export const ITEM_NAME_TO_ID: Record<string, number> = {
   'Undo Ability': AP_ITEMS.UNDO_ABILITY,
   'Remove Block': AP_ITEMS.REMOVE_BLOCK,
   'Hold Ability': AP_ITEMS.HOLD_ABILITY,
+  'Mirror Ability': AP_ITEMS.MIRROR_ABILITY,
   'Score Multiplier +10%': AP_ITEMS.SCORE_MULT_10,
   'Score Multiplier +25%': AP_ITEMS.SCORE_MULT_25,
   'Score Multiplier +50%': AP_ITEMS.SCORE_MULT_50,

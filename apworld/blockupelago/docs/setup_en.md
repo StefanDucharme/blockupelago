@@ -33,7 +33,8 @@ Place polyomino pieces onto a grid to clear rows, columns, and 3x3 boxes. Reach 
   - Rotate Ability: Rotate pieces before placing
   - Undo Ability: Undo your last move
   - Remove Block: Remove a single block from the grid
-  - Placement Hint: Show optimal placement suggestions
+  - Mirror Ability: Flip pieces horizontally before placing
+  - Hold Ability: Swap a piece to hold for later use
 - **Score Multipliers**: Permanent score boosts (+10%, +25%, +50%)
 
 ### Locations (Checks)

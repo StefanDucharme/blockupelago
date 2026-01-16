@@ -58,8 +58,10 @@
     undoUses,
     removeBlockUses,
     holdUses,
+    mirrorUses,
     heldPiece,
     rotatePiece,
+    mirrorPiece,
     scoreMultiplier,
     gameMode,
     maxPieceSlots,
@@ -80,6 +82,7 @@
     addRemoveBlock,
     addRotateAbility,
     addHoldAbility,
+    addMirrorAbility,
     addScoreMultiplier,
     addPieceSlot,
     reapplyArchipelagoItems,
@@ -242,6 +245,9 @@
             break;
           case AP_ITEMS.HOLD_ABILITY:
             addHoldAbility();
+            break;
+          case AP_ITEMS.MIRROR_ABILITY:
+            addMirrorAbility();
             break;
 
           // Score multipliers
@@ -455,6 +461,7 @@
         undoUses.value = 0;
         removeBlockUses.value = 0;
         holdUses.value = 0;
+        mirrorUses.value = 0;
         heldPiece.value = null;
         scoreMultiplier.value = 1.0;
         maxPieceSlots.value = 3;
@@ -678,6 +685,7 @@
           :score-multiplier="scoreMultiplier"
           :rotate-uses="rotateUses"
           :hold-uses="holdUses"
+          :mirror-uses="mirrorUses"
           :held-piece="heldPiece"
           :game-mode="gameMode"
           :total-gems-collected="totalGemsCollected"
@@ -687,6 +695,7 @@
           @new-game="handleNewGame"
           @hold-piece="holdPiece"
           @rotate-piece="rotatePiece"
+          @mirror-piece="mirrorPiece"
         />
       </div>
 
@@ -949,8 +958,8 @@
                     gameMode === 'archipelago'
                       ? 'border-purple-500 bg-purple-500/20'
                       : status === 'connected'
-                      ? 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600'
-                      : 'border-neutral-800 bg-neutral-900/50 opacity-50 cursor-not-allowed',
+                        ? 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600'
+                        : 'border-neutral-800 bg-neutral-900/50 opacity-50 cursor-not-allowed',
                   ]"
                 >
                   <div class="flex items-center justify-between">
@@ -1043,6 +1052,12 @@
                     {{ gameMode === 'free-play' ? '1 gem' : holdUses }}
                   </span>
                 </div>
+                <div class="flex items-center justify-between">
+                  <span class="text-neutral-300">🪞 Mirror Piece</span>
+                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : mirrorUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                    {{ gameMode === 'free-play' ? '1 gem' : mirrorUses }}
+                  </span>
+                </div>
               </div>
             </section>
 
@@ -1101,6 +1116,7 @@
                 <button type="button" class="btn-secondary w-full text-xs" @click="addUndoAbility()">+ Undo (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addRemoveBlock()">+ Remove Block (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addHoldAbility()">+ Hold (1 use)</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addMirrorAbility()">+ Mirror (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="totalGemsCollected++">💎 Give Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="spawnGem()">💎 Spawn Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addPieceSlot()">+ Piece Slot</button>

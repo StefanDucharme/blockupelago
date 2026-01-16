@@ -71,6 +71,7 @@ export function useBlockudoku() {
   const undoUses = usePersistentRef('blockudoku_undo_uses', 0);
   const removeBlockUses = usePersistentRef('blockudoku_remove_uses', 0);
   const holdUses = usePersistentRef('blockudoku_hold_uses', 0);
+  const mirrorUses = usePersistentRef('blockudoku_mirror_uses', 0);
   const heldPiece = usePersistentRef<Piece | null>('blockudoku_held_piece', null);
 
   // Score multiplier (from AP items)
@@ -241,6 +242,7 @@ export function useBlockudoku() {
       undoUses.value = 0;
       removeBlockUses.value = 0;
       holdUses.value = 0;
+      mirrorUses.value = 0;
       scoreMultiplier.value = 1.0;
       baseMultiplier.value = 1.0;
       maxPieceSlots.value = 3;
@@ -584,6 +586,7 @@ export function useBlockudoku() {
     undoUses.value = itemCounts.get(AP_ITEMS.UNDO_ABILITY) || 0;
     removeBlockUses.value = itemCounts.get(AP_ITEMS.REMOVE_BLOCK) || 0;
     holdUses.value = itemCounts.get(AP_ITEMS.HOLD_ABILITY) || 0;
+    mirrorUses.value = itemCounts.get(AP_ITEMS.MIRROR_ABILITY) || 0;
 
     // Apply score multipliers (set to total, not increment)
     const mult10Count = itemCounts.get(AP_ITEMS.SCORE_MULT_10) || 0;
@@ -620,6 +623,10 @@ export function useBlockudoku() {
 
   function addHoldAbility() {
     holdUses.value++;
+  }
+
+  function addMirrorAbility() {
+    mirrorUses.value++;
   }
 
   function addScoreMultiplier(amount: number) {
@@ -701,6 +708,41 @@ export function useBlockudoku() {
     }
   }
 
+  // Helper function to flip/mirror a piece horizontally
+  function applyMirror(piece: Piece): Piece {
+    const flippedShape = piece.shape.map((row) => [...row].reverse());
+    return { ...piece, shape: flippedShape };
+  }
+
+  // Mirror/flip a piece horizontally
+  function mirrorPiece(piece: Piece) {
+    // Only charge for the first mirror of this piece
+    if (!piece.hasBeenMirrored) {
+      // In free-play mode, consume a gem instead of ability uses
+      if (gameMode.value === 'free-play') {
+        if (totalGemsCollected.value <= 0) return;
+        totalGemsCollected.value--;
+      } else {
+        // In archipelago mode, use ability uses
+        if (mirrorUses.value <= 0) return;
+        mirrorUses.value--;
+      }
+    }
+
+    const mirroredPiece = { ...applyMirror(piece), hasBeenMirrored: true };
+
+    // Update the piece in currentPieces (by reference)
+    const index = currentPieces.value.findIndex((p) => p === piece);
+    if (index !== -1) {
+      currentPieces.value = [...currentPieces.value.slice(0, index), mirroredPiece, ...currentPieces.value.slice(index + 1)];
+    }
+
+    // Update held piece if it's the one being mirrored
+    if (heldPiece.value === piece) {
+      heldPiece.value = mirroredPiece;
+    }
+  }
+
   // Watch for grid size changes
   watch(gridSize, () => {
     if (grid.value.length !== gridSize.value) {
@@ -758,6 +800,7 @@ export function useBlockudoku() {
     undoUses,
     removeBlockUses,
     holdUses,
+    mirrorUses,
     heldPiece,
     scoreMultiplier,
     baseMultiplier,
@@ -772,6 +815,7 @@ export function useBlockudoku() {
     removeBlock,
     holdPiece,
     rotatePiece,
+    mirrorPiece,
     spawnGem,
     checkMilestones,
 
@@ -784,6 +828,7 @@ export function useBlockudoku() {
     addRemoveBlock,
     addRotateAbility,
     addHoldAbility,
+    addMirrorAbility,
     addScoreMultiplier,
     addPieceSlot,
     unlockedPieceIds,

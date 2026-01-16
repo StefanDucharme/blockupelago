@@ -17,6 +17,7 @@
     scoreMultiplier: number;
     rotateUses: number;
     holdUses: number;
+    mirrorUses: number;
     heldPiece: Piece | null;
     gameMode: 'free-play' | 'archipelago';
     totalGemsCollected: number;
@@ -29,6 +30,7 @@
     (e: 'new-game'): void;
     (e: 'hold-piece', piece: Piece): void;
     (e: 'rotate-piece', piece: Piece): void;
+    (e: 'mirror-piece', piece: Piece): void;
   }>();
 
   const selectedPiece = ref<Piece | null>(null);
@@ -77,6 +79,13 @@
     return props.rotateUses > 0;
   });
 
+  const canUseMirror = computed(() => {
+    if (props.gameMode === 'free-play') {
+      return props.totalGemsCollected > 0;
+    }
+    return props.mirrorUses > 0;
+  });
+
   // Check if a specific piece can be rotated (either has resources or piece already rotated)
   function canRotatePiece(piece: Piece): boolean {
     // If piece has already been rotated, subsequent rotations are free
@@ -85,6 +94,16 @@
     }
     // Otherwise, check if we have resources for the first rotation
     return canUseRotate.value;
+  }
+
+  // Check if a specific piece can be mirrored (either has resources or piece already mirrored)
+  function canMirrorPiece(piece: Piece): boolean {
+    // If piece has already been mirrored, subsequent mirrors are free
+    if (piece.hasBeenMirrored) {
+      return true;
+    }
+    // Otherwise, check if we have resources for the first mirror
+    return canUseMirror.value;
   }
 
   // Check if a piece can be placed anywhere on the grid in its current state
@@ -133,6 +152,13 @@
       return `💎`;
     }
     return props.holdUses;
+  });
+
+  const mirrorDisplayText = computed(() => {
+    if (props.gameMode === 'free-play') {
+      return `💎`;
+    }
+    return props.mirrorUses;
   });
 
   const removeBlockDisplayText = computed(() => {
@@ -275,8 +301,8 @@
     // Detect if this is a touch event
     isTouchDrag.value = 'touches' in event;
 
-    const clientX = 'touches' in event ? event.touches[0]?.clientX ?? 0 : event.clientX;
-    const clientY = 'touches' in event ? event.touches[0]?.clientY ?? 0 : event.clientY;
+    const clientX = 'touches' in event ? (event.touches[0]?.clientX ?? 0) : event.clientX;
+    const clientY = 'touches' in event ? (event.touches[0]?.clientY ?? 0) : event.clientY;
 
     // Calculate offset to center of the piece shape (in grid cell units)
     const pieceWidth = (piece.shape[0]?.length || 0) * cellSize.value;
@@ -296,8 +322,8 @@
   function handleDragMove(event: MouseEvent | TouchEvent) {
     if (!isDragging.value) return;
 
-    const clientX = 'touches' in event ? event.touches[0]?.clientX ?? 0 : event.clientX;
-    const clientY = 'touches' in event ? event.touches[0]?.clientY ?? 0 : event.clientY;
+    const clientX = 'touches' in event ? (event.touches[0]?.clientX ?? 0) : event.clientX;
+    const clientY = 'touches' in event ? (event.touches[0]?.clientY ?? 0) : event.clientY;
 
     dragPosition.value = { x: clientX, y: clientY };
 
@@ -522,6 +548,16 @@
             ]"
           >
             🔃 ({{ rotateDisplayText }})
+          </button>
+          <button
+            @click="emit('mirror-piece', piece)"
+            :disabled="!canMirrorPiece(piece)"
+            :class="[
+              'w-full sm:flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors',
+              canMirrorPiece(piece) ? 'bg-cyan-600/50 hover:bg-cyan-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
+            ]"
+          >
+            🪞 ({{ mirrorDisplayText }})
           </button>
           <button
             @click="emit('hold-piece', piece)"
