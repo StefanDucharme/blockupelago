@@ -301,6 +301,45 @@ export function getCompleteBoxes(grid: BlockGrid): number[] {
   return completeBoxes;
 }
 
+// Get all cells that would be cleared if the grid were in this state
+export function getCellsThatWouldClear(grid: BlockGrid): Set<string> {
+  const cellsToHighlight = new Set<string>();
+
+  // Get all complete rows
+  const completeRows = getCompleteRows(grid);
+  for (const r of completeRows) {
+    const row = grid[r];
+    if (row) {
+      for (let c = 0; c < row.length; c++) {
+        cellsToHighlight.add(`${r}-${c}`);
+      }
+    }
+  }
+
+  // Get all complete columns
+  const completeCols = getCompleteCols(grid);
+  for (const c of completeCols) {
+    for (let r = 0; r < grid.length; r++) {
+      cellsToHighlight.add(`${r}-${c}`);
+    }
+  }
+
+  // Get all complete boxes (for 9x9 grid)
+  const completeBoxes = getCompleteBoxes(grid);
+  for (const boxIndex of completeBoxes) {
+    const boxRow = Math.floor(boxIndex / 3);
+    const boxCol = boxIndex % 3;
+
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 3; c++) {
+        cellsToHighlight.add(`${boxRow * 3 + r}-${boxCol * 3 + c}`);
+      }
+    }
+  }
+
+  return cellsToHighlight;
+}
+
 // Clear complete rows, columns, and boxes (returns new grid and clear info)
 export function clearCompleted(grid: BlockGrid): {
   newGrid: BlockGrid;

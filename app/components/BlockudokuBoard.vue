@@ -1,7 +1,7 @@
 <script setup lang="ts">
   import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
   import type { Piece, BlockGrid } from '~/utils/blockudoku';
-  import { canPlacePiece } from '~/utils/blockudoku';
+  import { canPlacePiece, placePiece, getCellsThatWouldClear } from '~/utils/blockudoku';
 
   const props = defineProps<{
     grid: BlockGrid;
@@ -195,6 +195,19 @@
     return cells;
   });
 
+  // Get cells that would be cleared if piece is placed at hovered position
+  const cellsThatWouldClear = computed(() => {
+    if (!selectedPiece.value || !hoveredCell.value || !canPlaceAtHovered.value) {
+      return new Set<string>();
+    }
+
+    // Simulate placing the piece
+    const simulatedGrid = placePiece(props.grid, selectedPiece.value, hoveredCell.value.row, hoveredCell.value.col);
+
+    // Get cells that would clear
+    return getCellsThatWouldClear(simulatedGrid);
+  });
+
   // Calculate snapped position for drag preview
   const snappedDragPosition = computed(() => {
     if (!isDragging.value || !draggedPiece.value || !gridRef.value) {
@@ -270,9 +283,15 @@
     const isLeftBoxBorder = isBox && col % 3 === 0 && col !== 0;
     const cellValue = props.grid[row]?.[col];
     const isClearing = props.clearingCells.has(`${row}-${col}`);
+    const willClear = cellsThatWouldClear.value.has(`${row}-${col}`);
 
     // Gems no longer affect background, just use normal cell coloring
     let bgColor = cellValue === 1 ? 'bg-blue-500' : 'bg-gray-800';
+
+    // Highlight cells that will be cleared in yellow/gold
+    if (willClear && cellValue === 1) {
+      bgColor = 'bg-yellow-400';
+    }
 
     return `
         ${bgColor}
@@ -282,6 +301,7 @@
         ${isPreviewCell(row, col) ? (canPlaceAtHovered.value ? 'bg-green-400 border-green-500' : 'bg-red-400 border-red-500') : ''}
         ${removeMode.value && cellValue === 1 ? 'hover:bg-red-500' : ''}
         ${isClearing ? 'clearing-cell' : ''}
+        ${willClear ? 'transition-colors duration-150' : ''}
       `;
   }
 
