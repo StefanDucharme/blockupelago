@@ -386,24 +386,18 @@ export function useBlockudoku() {
     }
   }
 
-  // Unlock grid size (allow increasing or decreasing)
-  function unlockGridSize(size: number) {
+  // Set grid size (user preference - requires new game to take effect)
+  function setGridSize(size: number) {
     if (size !== gridSize.value) {
-      const oldSize = gridSize.value;
       gridSize.value = size;
-      const newGrid: BlockGrid = Array.from({ length: size }, () => Array(size).fill(0));
-      // Copy over existing cells
-      for (let r = 0; r < Math.min(oldSize, size); r++) {
-        for (let c = 0; c < Math.min(oldSize, size); c++) {
-          const sourceRow = grid.value[r];
-          const targetRow = newGrid[r];
-          if (sourceRow && targetRow) {
-            targetRow[c] = sourceRow[c] ?? 0;
-          }
-        }
-      }
-      grid.value = newGrid;
+      // Will take effect on next game
     }
+  }
+
+  // Apply the grid size (called when starting a new game)
+  function applyGridSize() {
+    const size = gridSize.value;
+    grid.value = makeGrid(size, size);
   }
 
   // Add abilities
@@ -546,9 +540,6 @@ export function useBlockudoku() {
           case 'multiplier':
             addScoreMultiplier(milestone.reward.value);
             break;
-          case 'gridSize':
-            unlockGridSize(milestone.reward.value);
-            break;
         }
 
         newRewards.push(milestone);
@@ -632,7 +623,7 @@ export function useBlockudoku() {
 
     // Archipelago unlocks
     unlockPiece,
-    unlockGridSize,
+    setGridSize,
     addUndoAbility,
     addRemoveBlock,
     addRotateAbility,

@@ -70,7 +70,7 @@
     spawnGem,
     checkMilestones,
     unlockPiece,
-    unlockGridSize,
+    setGridSize,
     addUndoAbility,
     addRemoveBlock,
     addRotateAbility,
@@ -171,17 +171,6 @@
               break;
             case AP_ITEMS.CROSS_3X3:
               unlockPiece('3x3 Cross');
-              break;
-
-            // Grid unlocks
-            case AP_ITEMS.GRID_6X6:
-              unlockGridSize(6);
-              break;
-            case AP_ITEMS.GRID_7X7:
-              unlockGridSize(7);
-              break;
-            case AP_ITEMS.GRID_9X9:
-              unlockGridSize(9);
               break;
 
             // Piece slots
@@ -401,9 +390,25 @@
             <section class="space-y-4">
               <h3 class="section-heading">Game Info</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3">
-                <div class="flex items-center justify-between">
-                  <span class="text-sm text-neutral-300">Grid Size</span>
-                  <span class="text-sm font-bold text-blue-400">{{ gridSize }}x{{ gridSize }}</span>
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-neutral-300">Grid Size</span>
+                    <span class="text-sm font-bold text-blue-400">{{ gridSize }}x{{ gridSize }}</span>
+                  </div>
+                  <div class="flex gap-2">
+                    <button
+                      v-for="size in [6, 9, 12]"
+                      :key="size"
+                      @click="setGridSize(size)"
+                      :class="[
+                        'flex-1 px-3 py-2 text-xs rounded transition-colors',
+                        gridSize === size ? 'bg-blue-600 text-white' : 'bg-neutral-700/50 text-neutral-300 hover:bg-neutral-600/50',
+                      ]"
+                    >
+                      {{ size }}x{{ size }}
+                    </button>
+                  </div>
+                  <p class="text-xs text-neutral-500 mt-2">⚠️ Changes take effect on next new game</p>
                 </div>
                 <div class="flex items-center justify-between">
                   <span class="text-sm text-neutral-300">Score Multiplier</span>
@@ -535,9 +540,6 @@
                 <button type="button" class="btn-secondary w-full text-xs" @click="spawnGem()">💎 Spawn Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addPieceSlot()">+ Piece Slot</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addScoreMultiplier(0.1)">+ 0.1x Score Multiplier</button>
-                <button type="button" class="btn-secondary w-full text-xs" @click="unlockGridSize(6)">Set Grid 6x6</button>
-                <button type="button" class="btn-secondary w-full text-xs" @click="unlockGridSize(9)">Set Grid 9x9</button>
-                <button type="button" class="btn-secondary w-full text-xs" @click="unlockGridSize(12)">Set Grid 12x12</button>
               </div>
             </section>
 
