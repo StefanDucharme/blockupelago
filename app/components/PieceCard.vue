@@ -62,6 +62,7 @@
       </div>
     </div>
     <div v-if="size !== 'small'" class="flex flex-col sm:flex-row gap-0.5 pt-1">
+      <!-- Icon options for Rotate: ↻ ⟲ 🔄 ⤾ ⤵ -->
       <button
         @click="emit('rotate')"
         :disabled="!canRotate"
@@ -69,19 +70,23 @@
           'w-full sm:flex-1 text-xs rounded transition-colors p-1',
           canRotate ? 'bg-blue-600/50 hover:bg-blue-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
         ]"
+        title="Rotate piece 90° clockwise"
       >
-        🔃<span v-if="!piece.hasBeenRotated && rotateDisplayText" class="block"> {{ rotateDisplayText }}</span>
+        <span class="text-base">↻</span><span v-if="!piece.hasBeenRotated && rotateDisplayText" class="block"> {{ rotateDisplayText }}</span>
       </button>
+      <!-- Icon options for Mirror: ⇄ ⇔ ↔ ⟷ ⮀ -->
       <button
         @click="emit('mirror')"
         :disabled="!canMirror"
         :class="[
           'w-full sm:flex-1 text-xs rounded transition-colors p-1',
-          canMirror ? 'bg-cyan-600/50 hover:bg-cyan-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
+          canMirror ? 'bg-emerald-600/50 hover:bg-emerald-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
         ]"
+        title="Mirror piece horizontally"
       >
-        <span class="text-cyan-300">↔️</span><span v-if="!piece.hasBeenMirrored && mirrorDisplayText" class="block"> {{ mirrorDisplayText }}</span>
+        <span class="text-base">⇄</span><span v-if="!piece.hasBeenMirrored && mirrorDisplayText" class="block"> {{ mirrorDisplayText }}</span>
       </button>
+      <!-- Icon options for Shrink: ⬛ ◼ ■ ▪ ⬜ -->
       <button
         @click="emit('shrink')"
         :disabled="!canShrink"
@@ -89,8 +94,9 @@
           'w-full sm:flex-1 text-xs rounded transition-colors p-1',
           canShrink ? 'bg-orange-600/50 hover:bg-orange-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
         ]"
+        title="Shrink piece to single block"
       >
-        ⬇️ <span v-if="shrinkDisplayText" class="block">{{ shrinkDisplayText }}</span>
+        <span class="text-base">■</span> <span v-if="shrinkDisplayText" class="block">{{ shrinkDisplayText }}</span>
       </button>
     </div>
   </div>

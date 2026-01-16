@@ -45,6 +45,7 @@
 <template>
   <div class="flex flex-col gap-1.5 sm:gap-3 items-center">
     <!-- Undo Button -->
+    <!-- Icon options: ↶ ↺ ⤶ ⮌ ⎌ -->
     <button
       @click="emit('undo')"
       :disabled="!canUseUndo"
@@ -52,11 +53,13 @@
         'w-22 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 rounded text-xs font-medium leading-tight transition-colors',
         canUseUndo ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
       ]"
+      title="Undo last move"
     >
-      Undo {{ undoDisplayText }}
+      <span class="text-base">↶</span> Undo {{ undoDisplayText }}
     </button>
 
     <!-- Remove Block Button -->
+    <!-- Icon options: ✕ × ╳ ⨯ 🗑 -->
     <button
       @click="emit('toggle-remove-mode')"
       :disabled="!canUseRemoveBlock && !removeMode"
@@ -68,8 +71,9 @@
             ? 'bg-orange-600 hover:bg-orange-700'
             : 'bg-gray-600/30 cursor-not-allowed opacity-50',
       ]"
+      :title="removeMode ? 'Cancel remove mode' : 'Remove a single block from the grid'"
     >
-      {{ removeMode ? 'Cancel' : `Remove` }} {{ removeBlockDisplayText }}
+      <span class="text-base">✕</span> {{ removeMode ? 'Cancel' : 'Remove' }} {{ removeBlockDisplayText }}
     </button>
 
     <!-- Hold Piece Area -->
