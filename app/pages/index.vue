@@ -9,13 +9,16 @@
   import { ALL_PIECES, STARTER_PIECE_IDS } from '~/utils/blockudoku';
 
   // Tab management
-  type MobileTab = 'game' | 'archipelago' | 'checks' | 'chat' | 'settings' | 'shop' | 'debug';
-  type RightTab = 'archipelago' | 'checks' | 'chat' | 'settings' | 'shop' | 'debug';
+  type MobileTab = 'game' | 'archipelago' | 'checks' | 'chat' | 'settings' | 'debug';
+  type RightTab = 'archipelago' | 'checks' | 'chat' | 'settings' | 'debug';
   const activeTab = ref<RightTab>('archipelago');
   const activeMobileTab = ref<MobileTab>('game');
 
   // Track if we're on mobile
   const isMobile = ref(false);
+
+  // Track if mobile stats are expanded
+  const mobileStatsExpanded = ref(false);
 
   onMounted(() => {
     const checkMobile = () => {
@@ -43,6 +46,7 @@
     totalScore,
     currentPieces,
     isGameOver,
+    isPotentialGameOver,
     clearingCells,
     gemCells,
     totalLinesCleared,
@@ -586,9 +590,6 @@
       <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'settings' }" @click="activeMobileTab = 'settings'">
         <span class="text-xs">⚙️</span>
       </button>
-      <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'shop' }" @click="activeMobileTab = 'shop'">
-        <span class="text-xs">🛒</span>
-      </button>
       <button class="tab-button flex-1 min-w-0 px-2" :class="{ active: activeMobileTab === 'debug' }" @click="activeMobileTab = 'debug'">
         <span class="text-xs">🐛</span>
       </button>
@@ -597,47 +598,66 @@
     <!-- Main Container -->
     <div class="flex flex-col lg:flex-row flex-1 min-h-0 overflow-hidden">
       <!-- LEFT: Main Game Area - hidden on mobile when not on game tab -->
-      <div class="flex-1 px-3 sm:px-6 py-2 sm:py-4 min-h-0 overflow-y-auto" :class="{ 'hidden lg:block': activeMobileTab !== 'game' }">
+      <div class="flex-1 px-0 sm:px-6 py-1 sm:py-4 min-h-0 overflow-y-auto" :class="{ 'hidden lg:block': activeMobileTab !== 'game' }">
         <!-- Stats Panel -->
-        <div class="mb-2 sm:mb-4 p-2 sm:p-3 bg-neutral-800/30 rounded-lg border border-neutral-700">
-          <div class="flex items-center justify-between gap-2 flex-wrap">
-            <div class="flex items-center gap-2">
-              <h2 class="text-sm sm:text-base font-semibold whitespace-nowrap">Blockupelago</h2>
+        <div class="mb-1 sm:mb-4 mx-1 sm:mx-0 p-1 sm:p-3 bg-neutral-800/30 rounded-lg border border-neutral-700">
+          <div class="flex items-center justify-between gap-1 sm:gap-2">
+            <div class="flex items-center gap-1 sm:gap-2 min-w-0">
+              <h2 class="text-xs sm:text-base font-semibold whitespace-nowrap">Blockupelago</h2>
               <span
                 :class="[
-                  'text-2xs px-2 py-0.5 rounded-full font-medium',
+                  'text-2xs px-1.5 sm:px-2 py-0.5 rounded-full font-medium whitespace-nowrap',
                   gameMode === 'free-play' ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400',
                 ]"
               >
-                {{ gameMode === 'free-play' ? '🎮 Free Play' : '🏝️ Archipelago' }}
+                {{ gameMode === 'free-play' ? '🎮' : '🏝️'
+                }}<span class="hidden sm:inline">{{ gameMode === 'free-play' ? ' Free Play' : ' Archipelago' }}</span>
               </span>
             </div>
-            <div class="flex items-center gap-2 sm:gap-3 flex-wrap text-xs">
-              <div class="flex items-center gap-1">
+            <div class="flex items-center gap-1 sm:gap-3 text-2xs sm:text-xs overflow-x-auto scrollbar-none">
+              <div class="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                <span class="sm:hidden">🏆</span>
                 <span class="font-bold text-blue-400">{{ totalScore }}</span>
-                <span class="text-neutral-400">Score</span>
+                <span class="text-neutral-400 hidden sm:inline">Score</span>
                 <span v-if="scoreMultiplier > 1" class="text-green-400 font-semibold ml-0.5">(×{{ scoreMultiplier.toFixed(2) }})</span>
               </div>
-              <div class="flex items-center gap-1">
-                <span class="font-bold text-green-400">{{ totalLinesCleared }}</span>
-                <span class="text-neutral-400">Lines</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <span class="font-bold text-purple-400">{{ totalBoxesCleared }}</span>
-                <span class="text-neutral-400">Boxes</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <span class="font-bold text-yellow-400">{{ totalCombos }}</span>
-                <span class="text-neutral-400">Combos</span>
-              </div>
-              <div class="flex items-center gap-1">
-                <span class="font-bold text-orange-400">{{ totalPiecesPlaced }}</span>
-                <span class="text-neutral-400">Pieces</span>
-              </div>
-              <div class="flex items-center gap-1">
+              <div class="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                <span class="sm:hidden">💎</span>
                 <span class="font-bold text-pink-400">{{ totalGemsCollected }}</span>
-                <span class="text-neutral-400">Gems</span>
+                <span class="text-neutral-400 hidden sm:inline">Gems</span>
               </div>
+              <button
+                @click="mobileStatsExpanded = !mobileStatsExpanded"
+                class="sm:hidden flex items-center gap-0.5 text-neutral-400 hover:text-neutral-200 transition-colors"
+              >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path v-if="mobileStatsExpanded" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              <!-- Expandable stats on mobile, always visible on desktop -->
+              <template v-if="mobileStatsExpanded || !isMobile">
+                <div class="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                  <span class="sm:hidden">📊</span>
+                  <span class="font-bold text-green-400">{{ totalLinesCleared }}</span>
+                  <span class="text-neutral-400 hidden sm:inline">Lines</span>
+                </div>
+                <div class="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                  <span class="sm:hidden">📦</span>
+                  <span class="font-bold text-purple-400">{{ totalBoxesCleared }}</span>
+                  <span class="text-neutral-400 hidden sm:inline">Boxes</span>
+                </div>
+                <div class="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                  <span class="sm:hidden">⚡</span>
+                  <span class="font-bold text-yellow-400">{{ totalCombos }}</span>
+                  <span class="text-neutral-400 hidden sm:inline">Combos</span>
+                </div>
+                <div class="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap">
+                  <span class="sm:hidden">🧩</span>
+                  <span class="font-bold text-orange-400">{{ totalPiecesPlaced }}</span>
+                  <span class="text-neutral-400 hidden sm:inline">Pieces</span>
+                </div>
+              </template>
             </div>
             <ThemePicker />
           </div>
@@ -649,6 +669,7 @@
           :grid-size="gridSize"
           :current-pieces="currentPieces"
           :is-game-over="isGameOver"
+          :is-potential-game-over="isPotentialGameOver"
           :total-score="totalScore"
           :clearing-cells="clearingCells"
           :gem-cells="gemCells"
@@ -671,7 +692,7 @@
 
       <!-- RIGHT: Sidebar with Tabs - hidden on mobile when game tab active -->
       <div
-        class="w-full lg:w-1/3 shrink-0 bg-neutral-900/95 backdrop-blur-lg border-t lg:border-t-0 lg:border-l border-neutral-700 flex flex-col min-h-0"
+        class="w-full lg:w-1/3 lg:shrink-0 bg-neutral-900/95 backdrop-blur-lg border-t lg:border-t-0 lg:border-l border-neutral-700 flex flex-col min-h-0 overflow-hidden flex-1 lg:flex-initial"
         :class="{ 'hidden lg:flex': activeMobileTab === 'game' }"
       >
         <!-- Tab Bar (desktop only) -->
@@ -696,12 +717,11 @@
             Chat
           </button>
           <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'settings' }" @click="activeTab = 'settings'">Settings</button>
-          <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'shop' }" @click="activeTab = 'shop'">Shop</button>
           <button class="tab-button whitespace-nowrap" :class="{ active: activeTab === 'debug' }" @click="activeTab = 'debug'">Debug</button>
         </div>
 
         <!-- Tab Content -->
-        <div class="p-3 sm:p-4 flex-1 overflow-y-auto min-h-0">
+        <div class="p-3 sm:p-4 flex-1 overflow-y-auto min-h-0 custom-scrollbar">
           <!-- ARCHIPELAGO TAB -->
           <div v-if="isTabVisible('archipelago')" class="space-y-6">
             <div>
@@ -892,7 +912,7 @@
           </div>
 
           <!-- SETTINGS TAB -->
-          <div v-else-if="activeTab === 'settings'" class="space-y-6">
+          <div v-else-if="isTabVisible('settings')" class="space-y-6">
             <div>
               <h2 class="font-semibold text-neutral-100 mb-1">Game Settings</h2>
               <p class="text-xs text-neutral-400">Customize your gameplay</p>
@@ -1057,42 +1077,6 @@
             </section>
           </div>
 
-          <!-- SHOP TAB -->
-          <div v-else-if="activeTab === 'shop'" class="space-y-6">
-            <div>
-              <h2 class="font-semibold text-neutral-100 mb-1">Shop & Abilities</h2>
-              <p class="text-xs text-neutral-400">Use your unlocked abilities</p>
-            </div>
-
-            <section class="space-y-3">
-              <h3 class="section-heading">Available Abilities</h3>
-              <div class="bg-neutral-800/30 rounded-sm p-4 space-y-3">
-                <button
-                  class="w-full px-4 py-3 rounded text-sm font-medium transition-colors flex items-center justify-between"
-                  :class="
-                    undoUses > 0 ? 'bg-blue-500/20 text-blue-300 hover:bg-blue-500/30' : 'bg-neutral-700/30 text-neutral-500 cursor-not-allowed'
-                  "
-                  :disabled="undoUses <= 0"
-                  @click="undo"
-                >
-                  <span>↶ Undo Last Move</span>
-                  <span class="text-xs opacity-70">{{ undoUses }} available</span>
-                </button>
-
-                <button
-                  class="w-full px-4 py-3 rounded text-sm font-medium transition-colors flex items-center justify-between"
-                  :class="
-                    removeBlockUses > 0 ? 'bg-red-500/20 text-red-300 hover:bg-red-500/30' : 'bg-neutral-700/30 text-neutral-500 cursor-not-allowed'
-                  "
-                  :disabled="removeBlockUses <= 0"
-                >
-                  <span>🗑️ Remove Block</span>
-                  <span class="text-xs opacity-70">{{ removeBlockUses }} available</span>
-                </button>
-              </div>
-            </section>
-          </div>
-
           <!-- DEBUG TAB -->
           <div v-else-if="isTabVisible('debug')" class="space-y-6">
             <div>
@@ -1203,25 +1187,28 @@
 
     <!-- Bottom Footer/Status Bar -->
     <footer class="shrink-0 border-t border-neutral-700/50 bg-neutral-950/90 backdrop-blur-lg">
-      <div class="px-3 sm:px-6 py-2 sm:py-3">
-        <div class="flex items-center gap-2 sm:gap-4">
+      <div class="px-2 sm:px-6 py-0.5 sm:py-3">
+        <div class="flex items-center gap-1 sm:gap-4">
           <div class="status-indicator shrink-0">
             <span class="status-dot" :class="statusMeta.dot"></span>
-            <span class="text-neutral-400 font-medium text-xs sm:text-sm">Archipelago</span>
-            <span :class="statusMeta.text" class="font-semibold text-xs sm:text-sm">{{ statusMeta.label }}</span>
+            <span class="text-neutral-400 font-medium text-2xs sm:text-sm hidden sm:inline">Archipelago</span>
+            <span :class="statusMeta.text" class="font-semibold text-2xs sm:text-sm">{{ statusMeta.label }}</span>
           </div>
           <div class="text-xs text-white/70 hidden lg:block truncate">Click and drag pieces onto the grid</div>
           <div>
             <button
               type="button"
               data-sleek
-              class="px-3 py-1.5 rounded text-xs transition-colors bg-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/30"
+              class="px-1.5 sm:px-3 !py-0.5 sm:!py-1.5 rounded text-xs transition-colors bg-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/30"
             >
-              Give Feedback
+              <span class="sm:hidden">💬</span>
+              <span class="hidden sm:inline">Give Feedback</span>
             </button>
           </div>
-          <div v-if="lastMessage" class="text-xs text-neutral-400 truncate ml-auto">Latest Message: {{ lastMessage }}</div>
-          <div class="text-xs text-neutral-400 truncate ml-auto">v0.1.3</div>
+          <div v-if="lastMessage" class="text-2xs sm:text-xs text-neutral-400 truncate ml-auto hidden sm:block">
+            Latest Message: {{ lastMessage }}
+          </div>
+          <div class="text-xs text-neutral-400 truncate ml-auto">v0.1.4</div>
         </div>
       </div>
     </footer>

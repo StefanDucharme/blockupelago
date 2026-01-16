@@ -13,11 +13,11 @@
     <!-- Theme Picker Button -->
     <button
       @click="isOpen = !isOpen"
-      class="btn-secondary flex items-center gap-2 text-sm"
+      class="btn-secondary flex items-center gap-2 text-xs sm:text-sm !py-1 sm:!py-2"
       title="Open theme selector"
       aria-label="Select color theme"
     >
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path
           stroke-linecap="round"
           stroke-linejoin="round"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-  import { ref, computed, onMounted, onUnmounted } from 'vue';
+  import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
   import type { Piece, BlockGrid } from '~/utils/blockudoku';
   import { canPlacePiece } from '~/utils/blockudoku';
 
@@ -8,6 +8,7 @@
     gridSize: number;
     currentPieces: Piece[];
     isGameOver: boolean;
+    isPotentialGameOver: boolean;
     totalScore: number;
     clearingCells: Set<string>;
     gemCells: { row: number; col: number; checkId: number }[];
@@ -49,9 +50,9 @@
 
     if (isMobile) {
       // On mobile, make cells smaller to fit
-      if (props.gridSize === 6) return 30;
-      if (props.gridSize === 7) return 25;
-      return 20; // 9x9
+      if (props.gridSize === 6) return 34;
+      if (props.gridSize === 7) return 28;
+      return 22; // 9x9
     }
 
     const maxSize = 40;
@@ -84,6 +85,18 @@
     }
     // Otherwise, check if we have resources for the first rotation
     return canUseRotate.value;
+  }
+
+  // Check if a piece can be placed anywhere on the grid in its current state
+  function isPiecePlaceable(piece: Piece): boolean {
+    for (let r = 0; r < props.grid.length; r++) {
+      for (let c = 0; c < (props.grid[0]?.length || 0); c++) {
+        if (canPlacePiece(props.grid, piece, r, c)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   const canUseHold = computed(() => {
@@ -158,8 +171,17 @@
 
   // Calculate snapped position for drag preview
   const snappedDragPosition = computed(() => {
-    if (!isDragging.value || !draggedPiece.value || !gridRef.value || !hoveredCell.value) {
+    if (!isDragging.value || !draggedPiece.value || !gridRef.value) {
       return dragPosition.value;
+    }
+
+    // Apply touch offset when not hovering over grid
+    if (!hoveredCell.value) {
+      const touchOffset = isTouchDrag.value ? 80 : 0;
+      return {
+        x: dragPosition.value.x,
+        y: dragPosition.value.y - touchOffset,
+      };
     }
 
     const gridRect = gridRef.value.getBoundingClientRect();
@@ -180,6 +202,17 @@
     selectedPiece.value = piece;
     removeMode.value = false;
   }
+
+  // Clear selected piece when current pieces change (e.g., new game)
+  watch(
+    () => props.currentPieces,
+    (newPieces, oldPieces) => {
+      // If the selected piece is no longer in the current pieces, clear it
+      if (selectedPiece.value && !newPieces.includes(selectedPiece.value)) {
+        selectedPiece.value = null;
+      }
+    },
+  );
 
   function handleCellClick(row: number, col: number) {
     if (removeMode.value) {
@@ -327,25 +360,28 @@
 </script>
 
 <template>
-  <div class="flex flex-col items-center gap-4 sm:gap-6 p-2 sm:p-4">
+  <div class="flex flex-col items-center gap-1 sm:gap-6 p-0 sm:p-4">
     <!-- New Game Button -->
-    <div v-if="isGameOver" class="flex items-center justify-center w-full max-w-4xl">
-      <button @click="emit('new-game')" class="px-4 sm:px-6 py-2 bg-green-600 hover:bg-green-700 rounded font-bold text-sm sm:text-base">
+    <div v-if="isGameOver || isPotentialGameOver" class="flex items-center justify-center w-full max-w-4xl">
+      <button @click="emit('new-game')" class="px-4 sm:px-6 py-1.5 sm:py-2 bg-green-600 hover:bg-green-700 rounded font-bold text-xs sm:text-base">
         🎮 New Game
       </button>
     </div>
 
     <!-- Game Over Message -->
-    <div class="min-h-6 sm:min-h-8 flex items-center justify-center">
-      <div v-if="isGameOver" class="text-lg sm:text-2xl font-bold text-red-500 animate-pulse">Game Over! No valid moves remaining.</div>
+    <div class="flex items-center justify-center">
+      <div v-if="isGameOver" class="text-sm sm:text-2xl font-bold text-red-500 animate-pulse">Game Over! No valid moves remaining.</div>
+      <div v-else-if="isPotentialGameOver" class="text-xs sm:text-lg font-bold text-yellow-500 animate-pulse">
+        ⚠️ No pieces can be placed as-is. Try using abilities or start a new game!
+      </div>
     </div>
 
     <!-- Game Grid and Right Controls -->
-    <div class="flex gap-4 items-start justify-center w-full">
+    <div class="flex gap-2 sm:gap-4 items-start justify-center w-full">
       <!-- Game Grid -->
       <div
         ref="gridRef"
-        class="grid gap-0.5 bg-gray-700 p-1 rounded-lg"
+        class="grid gap-0.5 bg-gray-700 p-0.5 sm:p-1 rounded-lg"
         :style="{
           gridTemplateColumns: `repeat(${gridSize}, ${cellSize}px)`,
           gridTemplateRows: `repeat(${gridSize}, ${cellSize}px)`,
@@ -371,14 +407,14 @@
       </div>
 
       <!-- Right Side Controls -->
-      <div class="flex flex-col gap-3 items-center">
+      <div class="flex flex-col gap-1.5 sm:gap-3 items-center">
         <!-- Hold Piece Area -->
-        <div class="flex flex-col gap-2">
-          <div class="text-xs text-center text-neutral-400">📦 Held</div>
+        <div class="flex flex-col gap-1 sm:gap-2">
+          <div class="text-2xs sm:text-xs text-center text-neutral-400">📦 Held</div>
           <div
             v-if="heldPiece"
             :class="[
-              'p-2 rounded-lg transition-all w-20 h-20 sm:w-25 sm:h-25 flex items-center justify-center cursor-grab active:cursor-grabbing',
+              'p-1.5 sm:p-2 rounded-lg transition-all w-16 h-16 sm:w-25 sm:h-25 flex items-center justify-center cursor-grab active:cursor-grabbing',
               selectedPiece === heldPiece ? 'bg-blue-700 scale-110' : 'bg-gray-700/50 border-2 border-dashed border-gray-500',
               isDragging && draggedPiece === heldPiece ? 'opacity-50' : '',
             ]"
@@ -406,9 +442,9 @@
           </div>
           <div
             v-else
-            class="p-2 rounded-lg transition-all w-20 h-20 sm:w-25 sm:h-25 flex items-center justify-center bg-gray-700/50 border-2 border-dashed border-gray-500"
+            class="p-1.5 sm:p-2 rounded-lg transition-all w-16 h-16 sm:w-25 sm:h-25 flex items-center justify-center bg-gray-700/50 border-2 border-dashed border-gray-500"
           >
-            <div class="text-xs text-center text-neutral-500">Empty</div>
+            <div class="text-2xs sm:text-xs text-center text-neutral-500">Empty</div>
           </div>
         </div>
 
@@ -416,9 +452,9 @@
         <button
           v-if="canUseUndo"
           @click="emit('undo')"
-          class="w-20 sm:w-25 px-2 py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-xs sm:text-sm font-medium"
+          class="w-20 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-[10px] sm:text-sm font-medium leading-tight"
         >
-          Undo<br />({{ undoDisplayText }})
+          Undo ({{ undoDisplayText }})
         </button>
 
         <!-- Remove Block Button -->
@@ -426,24 +462,30 @@
           v-if="canUseRemoveBlock"
           @click="toggleRemoveMode"
           :class="[
-            'w-20 sm:w-25 px-2 py-2 rounded text-xs sm:text-sm font-medium',
+            'w-20 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 rounded text-[10px] sm:text-sm font-medium leading-tight',
             removeMode ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700',
           ]"
         >
-          {{ removeMode ? 'Cancel' : `Remove` }}<br />({{ removeBlockDisplayText }})
+          {{ removeMode ? 'Cancel' : `Remove` }} ({{ removeBlockDisplayText }})
         </button>
       </div>
     </div>
 
     <!-- Available Pieces -->
-    <div class="flex gap-2 sm:gap-4 items-start justify-center flex-wrap">
-      <div v-for="(piece, idx) in currentPieces" :key="`piece-${idx}-${piece.id}`" data-piece-container class="flex flex-col gap-2 w-25 sm:w-30">
+    <div class="flex gap-1 sm:gap-4 items-start justify-center flex-wrap w-full px-1 sm:px-0 pt-2">
+      <div
+        v-for="(piece, idx) in currentPieces"
+        :key="`piece-${idx}-${piece.id}`"
+        data-piece-container
+        class="flex flex-col gap-1 sm:gap-2 w-[72px] sm:w-30"
+      >
         <div class="flex flex-col items-center">
           <div
             :class="[
-              'p-2 sm:p-3 rounded-lg cursor-grab active:cursor-grabbing transition-all touch-none w-25 h-25 sm:w-30 sm:h-30',
+              'p-2 sm:p-3 rounded-lg cursor-grab active:cursor-grabbing transition-all touch-none w-[72px] h-[72px] sm:w-30 sm:h-30',
               selectedPiece === piece ? 'bg-blue-700 scale-110' : 'bg-gray-700 hover:bg-gray-600',
               isDragging && draggedPiece === piece ? 'opacity-50' : '',
+              !isPiecePlaceable(piece) ? 'opacity-40 saturate-0' : '',
             ]"
             @click="selectPiece(piece)"
             @mousedown="(e) => handleDragStart(e, piece)"
@@ -453,8 +495,8 @@
               <div
                 class="grid gap-0.5"
                 :style="{
-                  gridTemplateColumns: `repeat(${piece.shape[0]?.length || 0}, 15px)`,
-                  gridTemplateRows: `repeat(${piece.shape.length}, 15px)`,
+                  gridTemplateColumns: `repeat(${piece.shape[0]?.length || 0}, 13px)`,
+                  gridTemplateRows: `repeat(${piece.shape.length}, 13px)`,
                 }"
               >
                 <div v-for="(row, r) in piece.shape" :key="`piece-row-${r}`" class="contents">
@@ -470,12 +512,12 @@
             </div>
           </div>
         </div>
-        <div class="flex gap-1 sm:gap-2 h-7 sm:h-8">
+        <div class="flex flex-col sm:flex-row gap-0.5 sm:gap-2">
           <button
             @click="emit('rotate-piece', piece)"
             :disabled="!canRotatePiece(piece)"
             :class="[
-              'flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors whitespace-nowrap',
+              'w-full sm:flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors',
               canRotatePiece(piece) ? 'bg-blue-600/50 hover:bg-blue-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
             ]"
           >
@@ -485,7 +527,7 @@
             @click="emit('hold-piece', piece)"
             :disabled="!canUseHold"
             :class="[
-              'flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors whitespace-nowrap',
+              'w-full sm:flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors',
               canUseHold ? 'bg-purple-600/50 hover:bg-purple-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
             ]"
           >
