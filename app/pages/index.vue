@@ -673,7 +673,7 @@
 
       <!-- RIGHT: Sidebar with Tabs - hidden on mobile when game tab active -->
       <div
-        class="w-full lg:w-1/3 shrink-0 bg-neutral-900/95 backdrop-blur-lg border-t lg:border-t-0 lg:border-l border-neutral-700 flex flex-col min-h-0"
+        class="w-full lg:w-1/3 lg:shrink-0 bg-neutral-900/95 backdrop-blur-lg border-t lg:border-t-0 lg:border-l border-neutral-700 flex flex-col min-h-0 overflow-hidden flex-1 lg:flex-initial"
         :class="{ 'hidden lg:flex': activeMobileTab === 'game' }"
       >
         <!-- Tab Bar (desktop only) -->
@@ -703,7 +703,7 @@
         </div>
 
         <!-- Tab Content -->
-        <div class="p-3 sm:p-4 flex-1 overflow-y-auto min-h-0">
+        <div class="p-3 sm:p-4 flex-1 overflow-y-auto min-h-0 custom-scrollbar">
           <!-- ARCHIPELAGO TAB -->
           <div v-if="isTabVisible('archipelago')" class="space-y-6">
             <div>
@@ -894,7 +894,7 @@
           </div>
 
           <!-- SETTINGS TAB -->
-          <div v-else-if="activeTab === 'settings'" class="space-y-6">
+          <div v-else-if="isTabVisible('settings')" class="space-y-6">
             <div>
               <h2 class="font-semibold text-neutral-100 mb-1">Game Settings</h2>
               <p class="text-xs text-neutral-400">Customize your gameplay</p>
@@ -1060,7 +1060,7 @@
           </div>
 
           <!-- SHOP TAB -->
-          <div v-else-if="activeTab === 'shop'" class="space-y-6">
+          <div v-else-if="isTabVisible('shop')" class="space-y-6">
             <div>
               <h2 class="font-semibold text-neutral-100 mb-1">Shop & Abilities</h2>
               <p class="text-xs text-neutral-400">Use your unlocked abilities</p>
