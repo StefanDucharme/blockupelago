@@ -2,6 +2,9 @@
 
 A web-based Blockudoku puzzle game with [Archipelago](https://archipelago.gg/) multiworld randomizer integration.
 
+## Playable online at:
+https://stefanducharme.github.io/blockupelago/
+
 ## Features
 
 - **Blockudoku Gameplay**: Place polyomino pieces on a 9x9 grid, clear rows/columns/3x3 boxes to score points
