@@ -834,75 +834,24 @@
               <p class="text-xs text-neutral-400">Track your progress</p>
             </div>
 
-            <!-- Score Milestones -->
-            <section class="space-y-3">
-              <h3 class="section-heading">Score Milestones</h3>
-              <div class="bg-neutral-800/30 rounded-sm p-4">
-                <div class="space-y-2">
-                  <div v-for="(score, idx) in SCORE_MILESTONES" :key="score" class="flex items-center justify-between text-xs">
-                    <span class="text-neutral-300">{{ score.toLocaleString() }} Points</span>
-                    <span v-if="isLocationCompleted(getScoreLocationId(score) || 0)" class="text-green-400">✓</span>
-                    <span v-else-if="totalScore >= score" class="text-yellow-400">⏳</span>
-                    <span v-else class="text-neutral-600">○</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Line Clears -->
-            <section class="space-y-3">
-              <h3 class="section-heading">Line Clears</h3>
-              <div class="bg-neutral-800/30 rounded-sm p-4">
-                <div class="grid grid-cols-2 gap-2">
-                  <div v-for="clears in LINE_CLEAR_MILESTONES" :key="clears" class="flex items-center justify-between text-xs">
-                    <span class="text-neutral-300">{{ clears }} Line{{ clears > 1 ? 's' : '' }}</span>
-                    <span v-if="isLocationCompleted(getLineClearLocationId(clears) || 0)" class="text-green-400">✓</span>
-                    <span v-else-if="totalLinesCleared >= clears" class="text-yellow-400">⏳</span>
-                    <span v-else class="text-neutral-600">○</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Box Clears -->
-            <section class="space-y-3">
-              <h3 class="section-heading">Box Clears</h3>
-              <div class="bg-neutral-800/30 rounded-sm p-4">
-                <div class="grid grid-cols-2 gap-2">
-                  <div v-for="clears in BOX_CLEAR_MILESTONES" :key="clears" class="flex items-center justify-between text-xs">
-                    <span class="text-neutral-300">{{ clears }} Box{{ clears > 1 ? 'es' : '' }}</span>
-                    <span v-if="isLocationCompleted(getBoxClearLocationId(clears) || 0)" class="text-green-400">✓</span>
-                    <span v-else-if="totalBoxesCleared >= clears" class="text-yellow-400">⏳</span>
-                    <span v-else class="text-neutral-600">○</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Pieces Placed -->
-            <section class="space-y-3">
-              <h3 class="section-heading">Pieces Placed</h3>
-              <div class="bg-neutral-800/30 rounded-sm p-4">
-                <div class="grid grid-cols-2 gap-2">
-                  <div v-for="pieces in PIECE_MILESTONES" :key="pieces" class="flex items-center justify-between text-xs">
-                    <span class="text-neutral-300">{{ pieces }} Piece{{ pieces > 1 ? 's' : '' }}</span>
-                    <span v-if="isLocationCompleted(getPieceLocationId(pieces) || 0)" class="text-green-400">✓</span>
-                    <span v-else-if="totalPiecesPlaced >= pieces" class="text-yellow-400">⏳</span>
-                    <span v-else class="text-neutral-600">○</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Summary -->
-            <div class="bg-neutral-800/30 rounded-sm p-4">
-              <div class="text-center space-y-2">
-                <div class="text-2xl font-bold text-green-400">
-                  {{ completedChecks.size || 0 }}
-                </div>
-                <div class="text-xs text-neutral-400">Total Checks Completed</div>
-              </div>
-            </div>
+            <ChecksList
+              :score-milestones="SCORE_MILESTONES"
+              :line-clear-milestones="LINE_CLEAR_MILESTONES"
+              :box-clear-milestones="BOX_CLEAR_MILESTONES"
+              :piece-milestones="PIECE_MILESTONES"
+              :total-score="totalScore"
+              :total-lines-cleared="totalLinesCleared"
+              :total-boxes-cleared="totalBoxesCleared"
+              :total-pieces-placed="totalPiecesPlaced"
+              :total-gems-collected="totalGemsCollected"
+              :max-gem-checks="MAX_GEM_CHECKS"
+              :completed-checks="completedChecks"
+              :get-score-location-id="getScoreLocationId"
+              :get-line-clear-location-id="getLineClearLocationId"
+              :get-box-clear-location-id="getBoxClearLocationId"
+              :get-piece-location-id="getPieceLocationId"
+              :get-gem-location-id="getGemLocationId"
+            />
           </div>
 
           <!-- CHAT TAB -->
@@ -1412,7 +1361,7 @@
             <button
               type="button"
               data-sleek
-              class="px-1.5 sm:px-3 !py-0.5 sm:!py-1.5 rounded text-xs transition-colors bg-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/30"
+              class="px-1.5 sm:px-3 py-0.5! sm:py-1.5! rounded text-xs transition-colors bg-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/30"
             >
               <span class="sm:hidden">💬</span>
               <span class="hidden sm:inline">Give Feedback</span>

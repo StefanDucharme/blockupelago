@@ -8,11 +8,14 @@
     totalLinesCleared: number;
     totalBoxesCleared: number;
     totalPiecesPlaced: number;
+    totalGemsCollected: number;
+    maxGemChecks: number;
     completedChecks: Set<number>;
     getScoreLocationId: (score: number) => number | null;
     getLineClearLocationId: (clears: number) => number | null;
     getBoxClearLocationId: (clears: number) => number | null;
     getPieceLocationId: (pieces: number) => number | null;
+    getGemLocationId: (gemNumber: number) => number | null;
   }>();
 
   function isLocationCompleted(locationId: number): boolean {
@@ -81,6 +84,21 @@
             <span class="text-neutral-300">{{ pieces }} Piece{{ pieces > 1 ? 's' : '' }}</span>
             <span v-if="isLocationCompleted(getPieceLocationId(pieces) || 0)" class="text-green-400">✓</span>
             <span v-else-if="totalPiecesPlaced >= pieces" class="text-yellow-400">⏳</span>
+            <span v-else class="text-neutral-600">○</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Gem Checks -->
+    <section class="space-y-3">
+      <h3 class="section-heading">Gems Collected</h3>
+      <div class="bg-neutral-800/30 rounded-sm p-4">
+        <div class="grid grid-cols-2 gap-2">
+          <div v-for="gem in maxGemChecks" :key="gem" class="flex items-center justify-between text-xs">
+            <span class="text-pink-300">Gem #{{ gem }}</span>
+            <span v-if="isLocationCompleted(getGemLocationId(gem) || 0)" class="text-green-400">✓</span>
+            <span v-else-if="totalGemsCollected >= gem" class="text-yellow-400">⏳</span>
             <span v-else class="text-neutral-600">○</span>
           </div>
         </div>
