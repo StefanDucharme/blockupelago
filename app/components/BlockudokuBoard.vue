@@ -56,6 +56,7 @@
   const dragPosition = ref<{ x: number; y: number }>({ x: 0, y: 0 });
   const dragOffset = ref<{ x: number; y: number }>({ x: 0, y: 0 });
   const isTouchDrag = ref(false); // Track if current drag is from touch
+  const draggedPieceSize = ref<{ width: number; height: number }>({ width: 0, height: 0 });
   const gridRef = ref<{ rootEl: HTMLElement | null } | null>(null);
   const holdAreaRef = ref<HTMLElement | null>(null);
   const isHoveringHoldArea = ref(false);
@@ -260,6 +261,8 @@
       y: pieceHeight / 2,
     };
 
+    draggedPieceSize.value = { width: pieceWidth, height: pieceHeight };
+
     dragPosition.value = { x: clientX, y: clientY };
 
     // Prevent default to avoid text selection
@@ -277,7 +280,24 @@
     // Check if hovering over hold area (only if hold area is empty)
     if (holdAreaRef.value && draggedPiece.value && draggedPiece.value !== props.heldPiece && !props.heldPiece) {
       const holdRect = holdAreaRef.value.getBoundingClientRect();
-      const isOverHoldArea = clientX >= holdRect.left && clientX <= holdRect.right && clientY >= holdRect.top && clientY <= holdRect.bottom;
+      let isOverHoldArea = false;
+
+      // On touch drags use the ghost's visual bounding box (which is offset above the finger)
+      if (isTouchDrag.value) {
+        const touchOffset = 80;
+        const ghostAnchorX = dragPosition.value.x;
+        const ghostAnchorY = dragPosition.value.y - touchOffset;
+
+        const ghostLeft = ghostAnchorX - dragOffset.value.x;
+        const ghostTop = ghostAnchorY - dragOffset.value.y;
+        const ghostRight = ghostLeft + draggedPieceSize.value.width;
+        const ghostBottom = ghostTop + draggedPieceSize.value.height;
+
+        isOverHoldArea = ghostLeft < holdRect.right && ghostRight > holdRect.left && ghostTop < holdRect.bottom && ghostBottom > holdRect.top;
+      } else {
+        // Mouse drags still use the pointer position
+        isOverHoldArea = clientX >= holdRect.left && clientX <= holdRect.right && clientY >= holdRect.top && clientY <= holdRect.bottom;
+      }
 
       isHoveringHoldArea.value = isOverHoldArea;
 
