@@ -1,7 +1,5 @@
 import { ref, computed, watch } from 'vue';
 import {
-  type BlockGrid,
-  type Piece,
   ALL_PIECES,
   STARTER_PIECE_IDS,
   makeGrid,
@@ -11,7 +9,23 @@ import {
   calculateScore,
   canPlaceAnyPiece,
   generatePieces,
+  rotatePiece,
+  mirrorPiece,
+  shrinkPiece,
 } from '~/utils/blockudoku';
+import type { GameMode, GameStateSnapshot, BlockGrid, Piece } from '~/utils/types';
+import {
+  DEFAULT_GRID_SIZE,
+  DEFAULT_PIECE_SLOTS,
+  DEFAULT_SCORE_MULTIPLIER,
+  COMBO_MULTIPLIER_INCREMENT,
+  DEFAULT_GEM_SPAWN_RATIO,
+  GEM_CHECK_ID_BASE,
+  DEFAULT_PIECE_SIZE_RATIO,
+  CLEAR_ANIMATION_DELAY_MS,
+  MAX_PIECE_SLOTS,
+} from '~/utils/constants';
+import { consumeAbility } from '~/utils/abilities';
 import { usePersistentRef, clearAllPersistence } from './usePersistence';
 import {
   getScoreLocationId,
@@ -22,15 +36,13 @@ import {
   MAX_GEM_CHECKS,
 } from './useArchipelagoItems';
 
-export type GameMode = 'free-play' | 'archipelago';
-
 export function useBlockudoku() {
   // Game mode
   const gameMode = usePersistentRef<GameMode>('blockudoku_game_mode', 'free-play');
 
   // Game state
-  const gridSize = usePersistentRef('blockudoku_grid_size', 9);
-  const grid = usePersistentRef<BlockGrid>('blockudoku_grid', makeGrid(9, 9));
+  const gridSize = usePersistentRef('blockudoku_grid_size', DEFAULT_GRID_SIZE);
+  const grid = usePersistentRef<BlockGrid>('blockudoku_grid', makeGrid(DEFAULT_GRID_SIZE, DEFAULT_GRID_SIZE));
   const totalScore = usePersistentRef('blockudoku_total_score', 0);
 
   // Clearing animation state
@@ -48,8 +60,8 @@ export function useBlockudoku() {
 
   // Gem cells (Archipelago checks)
   const gemCells = ref<{ row: number; col: number; checkId: number }[]>([]);
-  const gemSpawnChance = 0.3; // 30% chance to spawn a gem on piece restock
-  const nextGemCheckId = ref(10000000); // Starting ID for gem checks
+  const gemSpawnRatio = usePersistentRef('blockudoku_gem_spawn_ratio', DEFAULT_GEM_SPAWN_RATIO);
+  const nextGemCheckId = ref(GEM_CHECK_ID_BASE);
 
   // Statistics for Archipelago checks
   const totalLinesCleared = usePersistentRef('blockudoku_lines_cleared', 0);
@@ -66,30 +78,42 @@ export function useBlockudoku() {
     unlockedPieceIds.value = [...STARTER_PIECE_IDS];
   }
 
+  // Free-play settings
+  const pieceSizeRatio = usePersistentRef('blockudoku_piece_size_ratio', DEFAULT_PIECE_SIZE_RATIO);
+  const disabledShapeIds = usePersistentRef<string[]>('blockudoku_disabled_shapes', []);
+  const freeRotate = usePersistentRef('blockudoku_free_rotate', false);
+  const freeUndo = usePersistentRef('blockudoku_free_undo', false);
+  const freeRemove = usePersistentRef('blockudoku_free_remove', false);
+  const freeHold = usePersistentRef('blockudoku_free_hold', false);
+  const freeMirror = usePersistentRef('blockudoku_free_mirror', false);
+  const freeShrink = usePersistentRef('blockudoku_free_shrink', false);
+
   // Abilities
   const rotateUses = usePersistentRef('blockudoku_rotate_uses', 0);
   const undoUses = usePersistentRef('blockudoku_undo_uses', 0);
   const removeBlockUses = usePersistentRef('blockudoku_remove_uses', 0);
   const holdUses = usePersistentRef('blockudoku_hold_uses', 0);
+  const mirrorUses = usePersistentRef('blockudoku_mirror_uses', 0);
+  const shrinkUses = usePersistentRef('blockudoku_shrink_uses', 0);
   const heldPiece = usePersistentRef<Piece | null>('blockudoku_held_piece', null);
 
   // Score multiplier (from AP items)
-  const scoreMultiplier = usePersistentRef('blockudoku_score_multiplier', 1.0);
-  const baseMultiplier = usePersistentRef('blockudoku_base_multiplier', 1.0); // From items only
+  const scoreMultiplier = usePersistentRef('blockudoku_score_multiplier', DEFAULT_SCORE_MULTIPLIER);
+  const baseMultiplier = usePersistentRef('blockudoku_base_multiplier', DEFAULT_SCORE_MULTIPLIER);
 
   // Piece slots
-  const maxPieceSlots = usePersistentRef('blockudoku_max_pieces', 3);
+  const maxPieceSlots = usePersistentRef('blockudoku_max_pieces', DEFAULT_PIECE_SLOTS);
   const currentPieces = usePersistentRef<Piece[]>('blockudoku_current_pieces', []);
 
   // Game state
   const isGameOver = ref(false);
-  const lastMove = ref<{ grid: BlockGrid; pieces: Piece[]; totalScore: number } | null>(null);
+  const lastMove = ref<GameStateSnapshot | null>(null);
 
   // Available pieces based on what's unlocked
   const availablePieces = computed(() => {
-    // In free-play mode, all pieces are available
+    // In free-play mode, all pieces are available (minus disabled ones)
     if (gameMode.value === 'free-play') {
-      return ALL_PIECES;
+      return ALL_PIECES.filter((p) => !disabledShapeIds.value.includes(p.id));
     }
     // In archipelago mode, only unlocked pieces are available
     return ALL_PIECES.filter((p) => unlockedPieceIds.value.includes(p.id));
@@ -119,7 +143,7 @@ export function useBlockudoku() {
     // If player has rotate, check if rotating any piece would help
     if (hasRotate) {
       for (const piece of currentPieces.value) {
-        const rotatedPiece = applyRotation(piece);
+        const rotatedPiece = rotatePiece(piece);
         if (canPlaceAnyPiece(grid.value, [rotatedPiece])) {
           return false; // A rotation would make placement possible
         }
@@ -143,46 +167,36 @@ export function useBlockudoku() {
     return !canPlaceAnyPiece(grid.value, currentPieces.value);
   });
 
-  // Helper function to rotate a piece shape
-  function applyRotation(piece: Piece): Piece {
-    const oldShape = piece.shape;
-    const rows = oldShape.length;
-    const cols = oldShape[0]?.length || 0;
-
-    const newShape: BlockCell[][] = [];
-    for (let c = 0; c < cols; c++) {
-      const newRow: BlockCell[] = [];
-      for (let r = rows - 1; r >= 0; r--) {
-        newRow.push((oldShape[r]?.[c] || 0) as BlockCell);
-      }
-      newShape.push(newRow);
-    }
-
-    return { ...piece, shape: newShape };
-  }
-
   // Generate new pieces
   function generateNewPieces() {
     if (availablePieces.value.length === 0) {
       console.error('No pieces unlocked!');
       return;
     }
-    let pieces = generatePieces(availablePieces.value, maxPieceSlots.value);
+    // Use size ratio for weighted piece selection
+    let pieces = generatePieces(availablePieces.value, maxPieceSlots.value, pieceSizeRatio.value);
 
-    // Apply random rotation to each piece
+    // Apply random rotation and mirror to each piece
     pieces = pieces.map((piece) => {
       const rotations = Math.floor(Math.random() * 4); // 0-3 rotations
-      let rotatedPiece = piece;
+      let transformedPiece = piece;
       for (let i = 0; i < rotations; i++) {
-        rotatedPiece = applyRotation(rotatedPiece);
+        transformedPiece = rotatePiece(transformedPiece);
       }
-      return rotatedPiece;
+
+      // Random 50% chance to mirror the piece
+      if (Math.random() < 0.5) {
+        transformedPiece = mirrorPiece(transformedPiece);
+      }
+
+      // Reset transformation flags - initial spawn transformations shouldn't count as "user transformations"
+      return { ...transformedPiece, hasBeenRotated: false, hasBeenMirrored: false };
     });
 
     currentPieces.value = pieces;
 
     // Random chance to spawn a gem on the grid
-    if (Math.random() < gemSpawnChance) {
+    if (Math.random() < gemSpawnRatio.value) {
       spawnGem();
     }
   }
@@ -241,6 +255,7 @@ export function useBlockudoku() {
       undoUses.value = 0;
       removeBlockUses.value = 0;
       holdUses.value = 0;
+      mirrorUses.value = 0;
       scoreMultiplier.value = 1.0;
       baseMultiplier.value = 1.0;
       maxPieceSlots.value = 3;
@@ -414,8 +429,8 @@ export function useBlockudoku() {
         // Count as combo and increase score multiplier if multiple clears
         if (clearResult.totalClears > 1) {
           totalCombos.value++;
-          // Increase score multiplier by 2% per combo (0.02) on top of base
-          scoreMultiplier.value = baseMultiplier.value + totalCombos.value * 0.02;
+          // Increase score multiplier by combo increment on top of base
+          scoreMultiplier.value = baseMultiplier.value + totalCombos.value * COMBO_MULTIPLIER_INCREMENT;
         }
 
         // Calculate score
@@ -459,14 +474,8 @@ export function useBlockudoku() {
   function undo() {
     if (!lastMove.value) return false;
 
-    // In free-play mode, consume a gem instead of ability uses
-    if (gameMode.value === 'free-play') {
-      if (totalGemsCollected.value <= 0) return false;
-      totalGemsCollected.value--;
-    } else {
-      // In archipelago mode, use ability uses
-      if (undoUses.value <= 0) return false;
-      undoUses.value--;
+    if (!consumeAbility(gameMode.value, freeUndo.value, undoUses, totalGemsCollected)) {
+      return false;
     }
 
     grid.value = lastMove.value.grid;
@@ -484,14 +493,8 @@ export function useBlockudoku() {
       return false;
     }
 
-    // In free-play mode, consume a gem instead of ability uses
-    if (gameMode.value === 'free-play') {
-      if (totalGemsCollected.value <= 0) return false;
-      totalGemsCollected.value--;
-    } else {
-      // In archipelago mode, use ability uses
-      if (removeBlockUses.value <= 0) return false;
-      removeBlockUses.value--;
+    if (!consumeAbility(gameMode.value, freeRemove.value, removeBlockUses, totalGemsCollected)) {
+      return false;
     }
 
     grid.value = grid.value.map((r, rIdx) => r.map((cell, cIdx) => (rIdx === row && cIdx === col ? 0 : cell)));
@@ -584,6 +587,8 @@ export function useBlockudoku() {
     undoUses.value = itemCounts.get(AP_ITEMS.UNDO_ABILITY) || 0;
     removeBlockUses.value = itemCounts.get(AP_ITEMS.REMOVE_BLOCK) || 0;
     holdUses.value = itemCounts.get(AP_ITEMS.HOLD_ABILITY) || 0;
+    mirrorUses.value = itemCounts.get(AP_ITEMS.MIRROR_ABILITY) || 0;
+    shrinkUses.value = itemCounts.get(AP_ITEMS.SHRINK_ABILITY) || 0;
 
     // Apply score multipliers (set to total, not increment)
     const mult10Count = itemCounts.get(AP_ITEMS.SCORE_MULT_10) || 0;
@@ -600,6 +605,8 @@ export function useBlockudoku() {
       undo: undoUses.value,
       remove: removeBlockUses.value,
       hold: holdUses.value,
+      mirror: mirrorUses.value,
+      shrink: shrinkUses.value,
       multiplier: scoreMultiplier.value,
       slots: maxPieceSlots.value,
     });
@@ -622,13 +629,21 @@ export function useBlockudoku() {
     holdUses.value++;
   }
 
+  function addMirrorAbility() {
+    mirrorUses.value++;
+  }
+
+  function addShrinkAbility() {
+    shrinkUses.value++;
+  }
+
   function addScoreMultiplier(amount: number) {
     baseMultiplier.value += amount;
-    scoreMultiplier.value = baseMultiplier.value + totalCombos.value * 0.02;
+    scoreMultiplier.value = baseMultiplier.value + totalCombos.value * COMBO_MULTIPLIER_INCREMENT;
   }
 
   function addPieceSlot() {
-    if (maxPieceSlots.value < 5) {
+    if (maxPieceSlots.value < MAX_PIECE_SLOTS) {
       maxPieceSlots.value++;
       // Add one more piece if currently playing
       if (currentPieces.value.length > 0 && currentPieces.value.length < maxPieceSlots.value) {
@@ -639,14 +654,8 @@ export function useBlockudoku() {
 
   // Hold piece functionality
   function holdPiece(piece: Piece): boolean {
-    // In free-play mode, consume a gem instead of ability uses
-    if (gameMode.value === 'free-play') {
-      if (totalGemsCollected.value <= 0) return false;
-      totalGemsCollected.value--;
-    } else {
-      // In archipelago mode, use ability uses
-      if (holdUses.value <= 0) return false;
-      holdUses.value--;
+    if (!consumeAbility(gameMode.value, freeHold.value, holdUses, totalGemsCollected)) {
+      return false;
     }
 
     // Swap the piece with the held piece
@@ -673,21 +682,15 @@ export function useBlockudoku() {
   }
 
   // Rotate a piece 90 degrees clockwise
-  function rotatePiece(piece: Piece) {
+  function rotatePieceInGame(piece: Piece) {
     // Only charge for the first rotation of this piece
     if (!piece.hasBeenRotated) {
-      // In free-play mode, consume a gem instead of ability uses
-      if (gameMode.value === 'free-play') {
-        if (totalGemsCollected.value <= 0) return;
-        totalGemsCollected.value--;
-      } else {
-        // In archipelago mode, use ability uses
-        if (rotateUses.value <= 0) return;
-        rotateUses.value--;
+      if (!consumeAbility(gameMode.value, freeRotate.value, rotateUses, totalGemsCollected)) {
+        return;
       }
     }
 
-    const rotatedPiece = { ...applyRotation(piece), hasBeenRotated: true };
+    const rotatedPiece = rotatePiece(piece);
 
     // Update the piece in currentPieces (by reference)
     const index = currentPieces.value.findIndex((p) => p === piece);
@@ -698,6 +701,57 @@ export function useBlockudoku() {
     // Update held piece if it's the one being rotated
     if (heldPiece.value === piece) {
       heldPiece.value = rotatedPiece;
+    }
+  }
+
+  // Mirror/flip a piece horizontally
+  function mirrorPieceInGame(piece: Piece) {
+    // Only charge for the first mirror of this piece
+    if (!piece.hasBeenMirrored) {
+      if (!consumeAbility(gameMode.value, freeMirror.value, mirrorUses, totalGemsCollected)) {
+        return;
+      }
+    }
+
+    const mirroredPiece = mirrorPiece(piece);
+
+    // Update the piece in currentPieces (by reference)
+    const index = currentPieces.value.findIndex((p) => p === piece);
+    if (index !== -1) {
+      currentPieces.value = [...currentPieces.value.slice(0, index), mirroredPiece, ...currentPieces.value.slice(index + 1)];
+    }
+
+    // Update held piece if it's the one being mirrored
+    if (heldPiece.value === piece) {
+      heldPiece.value = mirroredPiece;
+    }
+  }
+
+  // Shrink a piece to a single block
+  function shrinkPieceInGame(piece: Piece) {
+    if (!consumeAbility(gameMode.value, freeShrink.value, shrinkUses, totalGemsCollected)) {
+      return;
+    }
+
+    // Find the single block piece
+    const singleBlockPiece = ALL_PIECES.find((p) => p.id === 'single');
+    if (!singleBlockPiece) return;
+
+    // Create a new single block piece with the original piece's color
+    const shrunkPiece: Piece = {
+      ...singleBlockPiece,
+      color: piece.color,
+    };
+
+    // Update the piece in currentPieces (by reference)
+    const index = currentPieces.value.findIndex((p) => p === piece);
+    if (index !== -1) {
+      currentPieces.value = [...currentPieces.value.slice(0, index), shrunkPiece, ...currentPieces.value.slice(index + 1)];
+    }
+
+    // Update held piece if it's the one being shrunk
+    if (heldPiece.value === piece) {
+      heldPiece.value = shrunkPiece;
     }
   }
 
@@ -758,10 +812,23 @@ export function useBlockudoku() {
     undoUses,
     removeBlockUses,
     holdUses,
+    mirrorUses,
+    shrinkUses,
     heldPiece,
     scoreMultiplier,
     baseMultiplier,
     maxPieceSlots,
+
+    // Free-play settings
+    pieceSizeRatio,
+    disabledShapeIds,
+    gemSpawnRatio,
+    freeRotate,
+    freeUndo,
+    freeRemove,
+    freeHold,
+    freeMirror,
+    freeShrink,
 
     // Actions
     initGame,
@@ -771,7 +838,9 @@ export function useBlockudoku() {
     undo,
     removeBlock,
     holdPiece,
-    rotatePiece,
+    rotatePiece: rotatePieceInGame,
+    mirrorPiece: mirrorPieceInGame,
+    shrinkPiece: shrinkPieceInGame,
     spawnGem,
     checkMilestones,
 
@@ -784,6 +853,8 @@ export function useBlockudoku() {
     addRemoveBlock,
     addRotateAbility,
     addHoldAbility,
+    addMirrorAbility,
+    addShrinkAbility,
     addScoreMultiplier,
     addPieceSlot,
     unlockedPieceIds,

@@ -64,54 +64,44 @@ class BlockudokuWorld(World):
         create_regions(self)
 
     def create_items(self) -> None:
-        """Create all items for the item pool."""
+        """Create all items for the item pool with custom distribution."""
         from .Items import STARTER_PIECES
 
-        item_count = 0
+        # Calculate how many locations we have (excluding Victory event)
+        location_count = len([loc for loc in location_table.values() if loc.code is not None])
 
-        # Piece types - exclude starter pieces, add the rest to pool
+        # --- 1. Add all rare/progression items (once each) ---
         piece_type_items = [
             "Single Block", "Domino I", "Tromino I", "Tromino L",
             "Tetromino I", "Tetromino O", "Tetromino T", "Tetromino L", "Tetromino S",
             "Pentomino I", "Pentomino L", "Pentomino P", "Pentomino U", "Pentomino W", "Pentomino Plus",
             "3x3 Corner", "3x3 T-Shape", "3x3 Cross"
         ]
-        # Add all pieces except the starter pieces (Tromino L, Tetromino T, Tetromino L)
-        for piece_name in piece_type_items:
-            if piece_name not in STARTER_PIECES:
-                self.multiworld.itempool.append(self.create_item(piece_name))
-                item_count += 1
+        shape_pool = [p for p in piece_type_items if p not in STARTER_PIECES]
+        for item_name in shape_pool:
+            self.multiworld.itempool.append(self.create_item(item_name))
+        self.multiworld.itempool.append(self.create_item("4th Piece Slot"))
+        self.multiworld.itempool.append(self.create_item("5th Piece Slot"))
+        self.multiworld.itempool.append(self.create_item("Permanent Free Rotate"))
+        self.multiworld.itempool.append(self.create_item("Permanent Free Mirror"))
+        self.multiworld.itempool.append(self.create_item("Permanent Free Hold"))
 
-        # Piece slots - add extras beyond starting
-        starting_slots = self.options.starting_piece_slots.value
-        if starting_slots < 4:
-            self.multiworld.itempool.append(self.create_item("4th Piece Slot"))
-            item_count += 1
-        if starting_slots < 5:
-            self.multiworld.itempool.append(self.create_item("5th Piece Slot"))
-            item_count += 1
+        # --- 2. Fill remaining locations with ability uses and multipliers (proportional) ---
+        rare_count = len(shape_pool) + 5  # 5 = 2 slots + 3 permanent abilities
+        filler_count = location_count - rare_count
+        # 2:1 ratio (2/3 ability uses, 1/3 multipliers)
+        n_abilities = (filler_count * 2) // 3
+        n_mults = filler_count - n_abilities
 
-        # Abilities - multiple copies based on options
-        for _ in range(self.options.rotate_uses_in_pool.value):
-            self.multiworld.itempool.append(self.create_item("Rotate Ability"))
-            item_count += 1
-        for _ in range(self.options.undo_uses_in_pool.value):
-            self.multiworld.itempool.append(self.create_item("Undo Ability"))
-            item_count += 1
-        for _ in range(self.options.remove_blocks_in_pool.value):
-            self.multiworld.itempool.append(self.create_item("Remove Block"))
-            item_count += 1
-        for _ in range(self.options.hold_uses_in_pool.value):
-            self.multiworld.itempool.append(self.create_item("Hold Ability"))
-            item_count += 1
+        ability_items = [
+            "Rotate Ability", "Undo Ability", "Remove Block", "Hold Ability", "Mirror Ability", "Shrink Ability"
+        ]
+        for i in range(n_abilities):
+            item_name = ability_items[i % len(ability_items)]
+            self.multiworld.itempool.append(self.create_item(item_name))
 
-        # Calculate how many locations we have (excluding Victory event)
-        location_count = len([loc for loc in location_table.values() if loc.code is not None])
-
-        # Fill remaining with score multipliers (filler)
-        filler_count = location_count - item_count
         multiplier_items = ["Score Multiplier +10%", "Score Multiplier +25%", "Score Multiplier +50%"]
-        for i in range(filler_count):
+        for i in range(n_mults):
             # Use a distribution: 50% +10%, 30% +25%, 20% +50%
             if i % 10 < 5:
                 item_name = "Score Multiplier +10%"

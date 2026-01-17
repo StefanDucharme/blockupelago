@@ -40,6 +40,8 @@ export const AP_ITEMS = {
   UNDO_ABILITY: 8003002,
   REMOVE_BLOCK: 8003003,
   HOLD_ABILITY: 8003004,
+  MIRROR_ABILITY: 8003005,
+  SHRINK_ABILITY: 8003006,
 
   // Score Multipliers (8004xxx)
   SCORE_MULT_10: 8004001,
@@ -76,6 +78,8 @@ export const ITEM_NAME_TO_ID: Record<string, number> = {
   'Undo Ability': AP_ITEMS.UNDO_ABILITY,
   'Remove Block': AP_ITEMS.REMOVE_BLOCK,
   'Hold Ability': AP_ITEMS.HOLD_ABILITY,
+  'Mirror Ability': AP_ITEMS.MIRROR_ABILITY,
+  'Shrink Ability': AP_ITEMS.SHRINK_ABILITY,
   'Score Multiplier +10%': AP_ITEMS.SCORE_MULT_10,
   'Score Multiplier +25%': AP_ITEMS.SCORE_MULT_25,
   'Score Multiplier +50%': AP_ITEMS.SCORE_MULT_50,
@@ -200,6 +204,8 @@ export function useArchipelagoItems() {
       localStorage.removeItem('blockudoku_undo_uses');
       localStorage.removeItem('blockudoku_remove_uses');
       localStorage.removeItem('blockudoku_hold_uses');
+      localStorage.removeItem('blockudoku_mirror_uses');
+      localStorage.removeItem('blockudoku_shrink_uses');
       localStorage.removeItem('blockudoku_score_multiplier');
       localStorage.removeItem('blockudoku_base_multiplier');
       localStorage.removeItem('blockudoku_max_pieces');

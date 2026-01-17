@@ -138,11 +138,21 @@ Open http://localhost:3000 in your browser.
 
 ### Game Options
 
-| Option                | Range   | Default | Description                                  |
-|-----------------------|---------|---------|----------------------------------------------|
-| `starting_piece_slots`| 3-5     | 3       | Number of piece slots at game start          |
-| `starting_abilities`  | 0-10    | 0       | Starting uses for abilities                  |
-| `goal_score`          | 1000-100000 | 30000 | Score required to complete the game         |
+Configure your Blockupelago multiworld experience with these YAML options:
+
+| Option                    | Range   | Default | Description                                  |
+|---------------------------|---------|---------|----------------------------------------------|
+| `starting_piece_slots`    | 2-3     | 3       | Number of piece slots at game start          |
+| `starting_abilities`      | 0-4     | 0       | Starting uses for all abilities              |
+| `rotate_uses_in_pool`     | 1-10    | 10      | Rotate Ability items in pool                 |
+| `undo_uses_in_pool`       | 1-10    | 10      | Undo Ability items in pool                   |
+| `remove_blocks_in_pool`   | 1-10    | 10      | Remove Block items in pool                   |
+| `hold_uses_in_pool`       | 1-10    | 10      | Hold Ability items in pool                   |
+| `mirror_uses_in_pool`     | 1-10    | 10      | Mirror Ability items in pool                 |
+| `shrink_uses_in_pool`     | 1-10    | 3       | Shrink Ability items in pool                 |
+| `score_multipliers_in_pool` | 0-20  | 10      | Score Multiplier items in pool               |
+| `goal_score`              | 10000-100000 | 30000 | Score required to complete the game    |
+| `death_link`              | true/false | false | Enable DeathLink (game over = everyone dies) |
 
 ### Location Checks
 
@@ -161,10 +171,26 @@ pieces unlocked. You can play continuously, collecting gems to use abilities, an
 In Archipelago Mode:
 - Start with only 3 basic pieces (Tromino L, Tetromino T, Tetromino L)
 - Unlock additional piece types as you receive items from other players
-- Abilities (Rotate, Undo, Remove Block, Hold) are granted through items
+- Abilities (Rotate, Undo, Remove Block, Hold, Mirror, Shrink) are granted through items
 - Score multipliers stack to boost your point gains
 - Reach the goal score to complete your game and send victory
 - Switching modes resets all progress
+
+### Free Play Customization
+
+In Free Play mode, the **Settings** tab provides extensive customization:
+
+**Piece Generation**:
+- **Piece Size Ratio** (0-100%): Control the balance of small vs. large pieces. 0% = mostly large pieces, 100% = mostly small pieces
+- **Disabled Shapes**: Toggle off specific piece types to prevent them from appearing
+
+**Gem Settings**:
+- **Gem Spawn Ratio** (0-100%): Set how frequently gems spawn when clearing lines/boxes
+
+**Free Abilities**: Make any ability usable without gem cost
+- Toggle free use for: Rotate, Undo, Remove Block, Hold, Mirror, Shrink
+
+These settings persist across sessions and only affect Free Play mode.
 
 ### Items You Can Receive
 
@@ -179,7 +205,9 @@ In Archipelago Mode:
 - **Rotate Ability** - Rotate pieces before placing
 - **Undo Ability** - Undo your last move
 - **Remove Block** - Remove a single block from the grid
-- **Hold Ability** - Hold a piece for later use
+- **Hold Ability** - Drag a piece to the hold area for later use (costs gems in free play)
+- **Mirror Ability** - Flip pieces horizontally before placing
+- **Shrink Ability** - Shrink any piece into a single block
 
 **Upgrades**:
 - **4th Piece Slot** - Increase piece slots from 3 to 4

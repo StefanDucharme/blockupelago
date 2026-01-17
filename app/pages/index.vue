@@ -7,6 +7,7 @@
   import { useArchipelago } from '~/composables/useArchipelago';
   import { clearAllPersistence } from '~/composables/usePersistence';
   import { ALL_PIECES, STARTER_PIECE_IDS } from '~/utils/blockudoku';
+  import { TABLET_BREAKPOINT_PX } from '~/utils/constants';
 
   // Tab management
   type MobileTab = 'game' | 'archipelago' | 'checks' | 'chat' | 'settings' | 'debug';
@@ -22,7 +23,7 @@
 
   onMounted(() => {
     const checkMobile = () => {
-      isMobile.value = window.innerWidth < 1024;
+      isMobile.value = window.innerWidth < TABLET_BREAKPOINT_PX;
     };
     checkMobile();
     window.addEventListener('resize', checkMobile);
@@ -58,12 +59,25 @@
     undoUses,
     removeBlockUses,
     holdUses,
+    mirrorUses,
     heldPiece,
     rotatePiece,
+    mirrorPiece,
     scoreMultiplier,
     gameMode,
     maxPieceSlots,
     unlockedPieceIds,
+    pieceSizeRatio,
+    disabledShapeIds,
+    gemSpawnRatio,
+    freeRotate,
+    freeUndo,
+    freeRemove,
+    freeHold,
+    freeMirror,
+    freeShrink,
+    shrinkUses,
+    shrinkPiece,
     initGame,
     resetStats,
     resetAllProgress,
@@ -80,6 +94,8 @@
     addRemoveBlock,
     addRotateAbility,
     addHoldAbility,
+    addMirrorAbility,
+    addShrinkAbility,
     addScoreMultiplier,
     addPieceSlot,
     reapplyArchipelagoItems,
@@ -243,6 +259,9 @@
           case AP_ITEMS.HOLD_ABILITY:
             addHoldAbility();
             break;
+          case AP_ITEMS.MIRROR_ABILITY:
+            addMirrorAbility();
+            break;
 
           // Score multipliers
           case AP_ITEMS.SCORE_MULT_10:
@@ -379,6 +398,22 @@
     }
   }
 
+  // Toggle a shape on/off in free-play mode
+  function toggleShape(shapeId: string) {
+    const index = disabledShapeIds.value.indexOf(shapeId);
+    if (index > -1) {
+      // Enable the shape
+      disabledShapeIds.value = disabledShapeIds.value.filter((id) => id !== shapeId);
+    } else {
+      // Disable the shape (but ensure at least 3 shapes remain enabled)
+      if (ALL_PIECES.length - disabledShapeIds.value.length > 3) {
+        disabledShapeIds.value = [...disabledShapeIds.value, shapeId];
+      } else {
+        alert('You must keep at least 3 shapes enabled!');
+      }
+    }
+  }
+
   // Debug: Send a location check
   async function debugSendCheck() {
     const category = debugLocationCategory.value;
@@ -455,6 +490,7 @@
         undoUses.value = 0;
         removeBlockUses.value = 0;
         holdUses.value = 0;
+        mirrorUses.value = 0;
         heldPiece.value = null;
         scoreMultiplier.value = 1.0;
         maxPieceSlots.value = 3;
@@ -678,15 +714,25 @@
           :score-multiplier="scoreMultiplier"
           :rotate-uses="rotateUses"
           :hold-uses="holdUses"
+          :mirror-uses="mirrorUses"
+          :shrink-uses="shrinkUses"
           :held-piece="heldPiece"
           :game-mode="gameMode"
           :total-gems-collected="totalGemsCollected"
+          :free-rotate="freeRotate"
+          :free-undo="freeUndo"
+          :free-remove="freeRemove"
+          :free-hold="freeHold"
+          :free-mirror="freeMirror"
+          :free-shrink="freeShrink"
           @place-piece="handlePlacePiece"
           @undo="undo"
           @remove-block="removeBlock"
           @new-game="handleNewGame"
           @hold-piece="holdPiece"
           @rotate-piece="rotatePiece"
+          @mirror-piece="mirrorPiece"
+          @shrink-piece="shrinkPiece"
         />
       </div>
 
@@ -788,75 +834,24 @@
               <p class="text-xs text-neutral-400">Track your progress</p>
             </div>
 
-            <!-- Score Milestones -->
-            <section class="space-y-3">
-              <h3 class="section-heading">Score Milestones</h3>
-              <div class="bg-neutral-800/30 rounded-sm p-4">
-                <div class="space-y-2">
-                  <div v-for="(score, idx) in SCORE_MILESTONES" :key="score" class="flex items-center justify-between text-xs">
-                    <span class="text-neutral-300">{{ score.toLocaleString() }} Points</span>
-                    <span v-if="isLocationCompleted(getScoreLocationId(score) || 0)" class="text-green-400">✓</span>
-                    <span v-else-if="totalScore >= score" class="text-yellow-400">⏳</span>
-                    <span v-else class="text-neutral-600">○</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Line Clears -->
-            <section class="space-y-3">
-              <h3 class="section-heading">Line Clears</h3>
-              <div class="bg-neutral-800/30 rounded-sm p-4">
-                <div class="grid grid-cols-2 gap-2">
-                  <div v-for="clears in LINE_CLEAR_MILESTONES" :key="clears" class="flex items-center justify-between text-xs">
-                    <span class="text-neutral-300">{{ clears }} Line{{ clears > 1 ? 's' : '' }}</span>
-                    <span v-if="isLocationCompleted(getLineClearLocationId(clears) || 0)" class="text-green-400">✓</span>
-                    <span v-else-if="totalLinesCleared >= clears" class="text-yellow-400">⏳</span>
-                    <span v-else class="text-neutral-600">○</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Box Clears -->
-            <section class="space-y-3">
-              <h3 class="section-heading">Box Clears</h3>
-              <div class="bg-neutral-800/30 rounded-sm p-4">
-                <div class="grid grid-cols-2 gap-2">
-                  <div v-for="clears in BOX_CLEAR_MILESTONES" :key="clears" class="flex items-center justify-between text-xs">
-                    <span class="text-neutral-300">{{ clears }} Box{{ clears > 1 ? 'es' : '' }}</span>
-                    <span v-if="isLocationCompleted(getBoxClearLocationId(clears) || 0)" class="text-green-400">✓</span>
-                    <span v-else-if="totalBoxesCleared >= clears" class="text-yellow-400">⏳</span>
-                    <span v-else class="text-neutral-600">○</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Pieces Placed -->
-            <section class="space-y-3">
-              <h3 class="section-heading">Pieces Placed</h3>
-              <div class="bg-neutral-800/30 rounded-sm p-4">
-                <div class="grid grid-cols-2 gap-2">
-                  <div v-for="pieces in PIECE_MILESTONES" :key="pieces" class="flex items-center justify-between text-xs">
-                    <span class="text-neutral-300">{{ pieces }} Piece{{ pieces > 1 ? 's' : '' }}</span>
-                    <span v-if="isLocationCompleted(getPieceLocationId(pieces) || 0)" class="text-green-400">✓</span>
-                    <span v-else-if="totalPiecesPlaced >= pieces" class="text-yellow-400">⏳</span>
-                    <span v-else class="text-neutral-600">○</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <!-- Summary -->
-            <div class="bg-neutral-800/30 rounded-sm p-4">
-              <div class="text-center space-y-2">
-                <div class="text-2xl font-bold text-green-400">
-                  {{ completedChecks.size || 0 }}
-                </div>
-                <div class="text-xs text-neutral-400">Total Checks Completed</div>
-              </div>
-            </div>
+            <ChecksList
+              :score-milestones="SCORE_MILESTONES"
+              :line-clear-milestones="LINE_CLEAR_MILESTONES"
+              :box-clear-milestones="BOX_CLEAR_MILESTONES"
+              :piece-milestones="PIECE_MILESTONES"
+              :total-score="totalScore"
+              :total-lines-cleared="totalLinesCleared"
+              :total-boxes-cleared="totalBoxesCleared"
+              :total-pieces-placed="totalPiecesPlaced"
+              :total-gems-collected="totalGemsCollected"
+              :max-gem-checks="MAX_GEM_CHECKS"
+              :completed-checks="completedChecks"
+              :get-score-location-id="getScoreLocationId"
+              :get-line-clear-location-id="getLineClearLocationId"
+              :get-box-clear-location-id="getBoxClearLocationId"
+              :get-piece-location-id="getPieceLocationId"
+              :get-gem-location-id="getGemLocationId"
+            />
           </div>
 
           <!-- CHAT TAB -->
@@ -949,8 +944,8 @@
                     gameMode === 'archipelago'
                       ? 'border-purple-500 bg-purple-500/20'
                       : status === 'connected'
-                      ? 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600'
-                      : 'border-neutral-800 bg-neutral-900/50 opacity-50 cursor-not-allowed',
+                        ? 'border-neutral-700 bg-neutral-800/50 hover:border-neutral-600'
+                        : 'border-neutral-800 bg-neutral-900/50 opacity-50 cursor-not-allowed',
                   ]"
                 >
                   <div class="flex items-center justify-between">
@@ -991,9 +986,14 @@
                       v-for="size in [6, 9, 12]"
                       :key="size"
                       @click="handleGridSizeChange(size)"
+                      :disabled="gameMode === 'archipelago'"
                       :class="[
                         'flex-1 px-3 py-2 text-xs rounded transition-colors',
-                        gridSize === size ? 'bg-blue-600 text-white' : 'bg-neutral-700/50 text-neutral-300 hover:bg-neutral-600/50',
+                        gridSize === size
+                          ? 'bg-blue-600 text-white'
+                          : gameMode === 'archipelago'
+                            ? 'bg-neutral-700/30 text-neutral-500 cursor-not-allowed'
+                            : 'bg-neutral-700/50 text-neutral-300 hover:bg-neutral-600/50',
                       ]"
                     >
                       {{ size }}x{{ size }}
@@ -1013,35 +1013,195 @@
 
             <section class="space-y-4">
               <h3 class="section-heading">
-                {{ gameMode === 'free-play' ? 'Gem-Powered Abilities' : 'Unlocked Abilities' }}
+                {{ gameMode === 'free-play' ? 'Ability Settings' : 'Unlocked Abilities' }}
               </h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2 text-sm">
                 <div v-if="gameMode === 'free-play'" class="mb-3 p-2 bg-pink-500/10 border border-pink-500/30 rounded text-xs text-pink-300">
                   💎 You have {{ totalGemsCollected }} gems
                 </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-neutral-300">🔄 Rotate Pieces</span>
-                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : rotateUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ gameMode === 'free-play' ? '1 gem' : rotateUses }}
-                  </span>
+
+                <!-- Free-play mode: toggleable abilities -->
+                <template v-if="gameMode === 'free-play'">
+                  <div class="flex items-center justify-between py-1">
+                    <span class="text-neutral-300">🔄 Rotate Pieces</span>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <span class="text-xs" :class="'text-pink-400'"> 1 gem </span>
+                      <input type="checkbox" v-model="freeRotate" class="toggle-checkbox toggle-checkbox-pink" />
+                      <span class="text-xs" :class="'text-green-400'"> Free </span>
+                    </label>
+                  </div>
+                  <div class="flex items-center justify-between py-1">
+                    <span class="text-neutral-300">↶ Undo</span>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <span class="text-xs" :class="'text-pink-400'"> 1 gem </span>
+                      <input type="checkbox" v-model="freeUndo" class="toggle-checkbox toggle-checkbox-pink" />
+                      <span class="text-xs" :class="'text-green-400'"> Free </span>
+                    </label>
+                  </div>
+                  <div class="flex items-center justify-between py-1">
+                    <span class="text-neutral-300">🗑️ Remove Block</span>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <span class="text-xs" :class="'text-pink-400'"> 1 gem </span>
+                      <input type="checkbox" v-model="freeRemove" class="toggle-checkbox toggle-checkbox-pink" />
+                      <span class="text-xs" :class="'text-green-400'"> Free </span>
+                    </label>
+                  </div>
+                  <div class="flex items-center justify-between py-1">
+                    <span class="text-neutral-300">📦 Hold Piece</span>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <span class="text-xs" :class="'text-pink-400'"> 1 gem </span>
+                      <input type="checkbox" v-model="freeHold" class="toggle-checkbox toggle-checkbox-pink" />
+                      <span class="text-xs" :class="'text-green-400'"> Free </span>
+                    </label>
+                  </div>
+                  <div class="flex items-center justify-between py-1">
+                    <span class="text-neutral-300"><span class="text-cyan-400">↔️</span> Mirror Piece</span>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <span class="text-xs" :class="'text-pink-400'"> 1 gem </span>
+                      <input type="checkbox" v-model="freeMirror" class="toggle-checkbox toggle-checkbox-pink" />
+                      <span class="text-xs" :class="'text-green-400'"> Free </span>
+                    </label>
+                  </div>
+                  <div class="flex items-center justify-between py-1">
+                    <span class="text-neutral-300">⬇️ Shrink to 1 Block</span>
+                    <label class="flex items-center gap-2 cursor-pointer">
+                      <span class="text-xs" :class="'text-pink-400'"> 1 gem </span>
+                      <input type="checkbox" v-model="freeShrink" class="toggle-checkbox toggle-checkbox-pink" />
+                      <span class="text-xs" :class="'text-green-400'"> Free </span>
+                    </label>
+                  </div>
+                </template>
+
+                <!-- Archipelago mode: show ability counts -->
+                <template v-else>
+                  <div class="flex items-center justify-between">
+                    <span class="text-neutral-300">🔄 Rotate Pieces</span>
+                    <span :class="rotateUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                      {{ rotateUses }}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-neutral-300">↶ Undo</span>
+                    <span :class="undoUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                      {{ undoUses }}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-neutral-300">🗑️ Remove Block</span>
+                    <span :class="removeBlockUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                      {{ removeBlockUses }}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-neutral-300">📦 Hold Piece</span>
+                    <span :class="holdUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                      {{ holdUses }}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-neutral-300"><span class="text-cyan-400">↔️</span> Mirror Piece</span>
+                    <span :class="mirrorUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                      {{ mirrorUses }}
+                    </span>
+                  </div>
+                  <div class="flex items-center justify-between">
+                    <span class="text-neutral-300">⬇️ Shrink to 1 Block</span>
+                    <span :class="shrinkUses > 0 ? 'text-green-400' : 'text-neutral-500'">
+                      {{ shrinkUses }}
+                    </span>
+                  </div>
+                </template>
+              </div>
+            </section>
+
+            <section class="space-y-4">
+              <h3 class="section-heading">Piece Generation Settings</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4 space-y-4">
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-neutral-300">Piece Size Preference</span>
+                    <span class="text-xs text-blue-400 font-mono">{{ pieceSizeRatio.toFixed(2) }}</span>
+                  </div>
+                  <input
+                    type="range"
+                    v-model.number="pieceSizeRatio"
+                    :disabled="gameMode === 'archipelago'"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    :class="[
+                      'w-full h-2 bg-neutral-700 rounded-lg appearance-none slider',
+                      gameMode === 'archipelago' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+                    ]"
+                  />
+                  <div class="flex justify-between text-2xs text-neutral-500 mt-1">
+                    <span>Small (1-2 blocks)</span>
+                    <span>Balanced</span>
+                    <span>Large (4-5 blocks)</span>
+                  </div>
+                  <p class="text-2xs text-neutral-400 mt-2">Controls the probability of generating smaller vs larger pieces when restocking.</p>
                 </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-neutral-300">↶ Undo</span>
-                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : undoUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ gameMode === 'free-play' ? '1 gem' : undoUses }}
-                  </span>
+                <div>
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-neutral-300">Gem Spawn Chance</span>
+                    <span class="text-xs text-pink-400 font-mono">{{ (gemSpawnRatio * 100).toFixed(0) }}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    v-model.number="gemSpawnRatio"
+                    :disabled="gameMode === 'archipelago'"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    :class="[
+                      'w-full h-2 bg-neutral-700 rounded-lg appearance-none slider',
+                      gameMode === 'archipelago' ? 'cursor-not-allowed opacity-50' : 'cursor-pointer',
+                    ]"
+                  />
+                  <div class="flex justify-between text-2xs text-neutral-500 mt-1">
+                    <span>Never</span>
+                    <span>Sometimes</span>
+                    <span>Always</span>
+                  </div>
+                  <p class="text-2xs text-neutral-400 mt-2">Probability that a gem will spawn on the grid when new pieces are generated.</p>
                 </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-neutral-300">🗑️ Remove Block</span>
-                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : removeBlockUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ gameMode === 'free-play' ? '1 gem' : removeBlockUses }}
-                  </span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-neutral-300">📦 Hold Piece</span>
-                  <span :class="gameMode === 'free-play' ? 'text-pink-400' : holdUses > 0 ? 'text-green-400' : 'text-neutral-500'">
-                    {{ gameMode === 'free-play' ? '1 gem' : holdUses }}
-                  </span>
+              </div>
+            </section>
+
+            <section v-if="gameMode === 'free-play'" class="space-y-4">
+              <h3 class="section-heading">Enabled Shapes ({{ ALL_PIECES.length - disabledShapeIds.length }} / {{ ALL_PIECES.length }})</h3>
+              <div class="bg-neutral-800/30 rounded-sm p-4">
+                <p class="text-xs text-neutral-400 mb-3">Toggle shapes on/off for piece generation</p>
+                <div class="grid grid-cols-2 gap-2 max-h-96 overflow-y-auto">
+                  <button
+                    v-for="piece in ALL_PIECES"
+                    :key="piece.id"
+                    @click="toggleShape(piece.id)"
+                    :class="[
+                      'text-left p-2 rounded transition-all border',
+                      disabledShapeIds.includes(piece.id)
+                        ? 'bg-neutral-900/30 border-neutral-800 opacity-50'
+                        : 'bg-neutral-900/50 border-neutral-700 hover:border-blue-500',
+                    ]"
+                  >
+                    <div class="flex items-center justify-between mb-1">
+                      <span class="text-xs text-neutral-300">{{ piece.name }}</span>
+                      <span v-if="!disabledShapeIds.includes(piece.id)" class="text-green-400 text-xs">✓</span>
+                      <span v-else class="text-neutral-600 text-xs">✗</span>
+                    </div>
+                    <div class="flex items-center justify-center">
+                      <div class="inline-grid gap-0.5">
+                        <div v-for="(row, i) in piece.shape" :key="i" class="flex gap-0.5">
+                          <div
+                            v-for="(cell, j) in row"
+                            :key="j"
+                            :style="{ backgroundColor: cell ? piece.color : 'transparent' }"
+                            class="w-3 h-3 rounded-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </button>
                 </div>
               </div>
             </section>
@@ -1095,13 +1255,15 @@
             <section class="space-y-3">
               <h3 class="section-heading">Grant Rewards</h3>
               <div class="bg-neutral-800/30 rounded-sm p-4 space-y-2">
-                <button type="button" class="btn-secondary w-full text-xs" @click="totalScore += 100">📊 +100 Score</button>
-                <button type="button" class="btn-secondary w-full text-xs" @click="totalScore += 1000">📊 +1000 Score</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="totalScore += 100">+100 Score</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="totalScore += 1000">+1000 Score</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addRotateAbility()">+ Rotate (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addUndoAbility()">+ Undo (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addRemoveBlock()">+ Remove Block (1 use)</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addHoldAbility()">+ Hold (1 use)</button>
-                <button type="button" class="btn-secondary w-full text-xs" @click="totalGemsCollected++">💎 Give Gem</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addMirrorAbility()">+ Mirror (1 use)</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="addShrinkAbility()">+ Shrink (1 use)</button>
+                <button type="button" class="btn-secondary w-full text-xs" @click="totalGemsCollected++">+ Give Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="spawnGem()">💎 Spawn Gem</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addPieceSlot()">+ Piece Slot</button>
                 <button type="button" class="btn-secondary w-full text-xs" @click="addScoreMultiplier(0.1)">+ 0.1x Score Multiplier</button>
@@ -1199,7 +1361,7 @@
             <button
               type="button"
               data-sleek
-              class="px-1.5 sm:px-3 !py-0.5 sm:!py-1.5 rounded text-xs transition-colors bg-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/30"
+              class="px-1.5 sm:px-3 py-0.5! sm:py-1.5! rounded text-xs transition-colors bg-fuchsia-500/20 text-fuchsia-300 hover:bg-fuchsia-500/30"
             >
               <span class="sm:hidden">💬</span>
               <span class="hidden sm:inline">Give Feedback</span>
@@ -1208,7 +1370,7 @@
           <div v-if="lastMessage" class="text-2xs sm:text-xs text-neutral-400 truncate ml-auto hidden sm:block">
             Latest Message: {{ lastMessage }}
           </div>
-          <div class="text-xs text-neutral-400 truncate ml-auto">v0.1.4</div>
+          <div class="text-xs text-neutral-400 truncate ml-auto">v0.2.0</div>
         </div>
       </div>
     </footer>

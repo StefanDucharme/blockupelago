@@ -1,7 +1,12 @@
 <script setup lang="ts">
   import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-  import type { Piece, BlockGrid } from '~/utils/blockudoku';
   import { canPlacePiece } from '~/utils/blockudoku';
+  import type { GameMode, Piece, BlockGrid } from '~/utils/types';
+  import { MOBILE_BREAKPOINT_PX, CELL_SIZE_MOBILE, CELL_SIZE_DESKTOP } from '~/utils/constants';
+  import { canUseAbility, getAbilityDisplayText, canTransformPieceFree } from '~/utils/abilities';
+  import GameGrid from './GameGrid.vue';
+  import PieceCard from './PieceCard.vue';
+  import GameControls from './GameControls.vue';
 
   const props = defineProps<{
     grid: BlockGrid;
@@ -17,9 +22,17 @@
     scoreMultiplier: number;
     rotateUses: number;
     holdUses: number;
+    mirrorUses: number;
+    shrinkUses: number;
     heldPiece: Piece | null;
     gameMode: 'free-play' | 'archipelago';
     totalGemsCollected: number;
+    freeRotate?: boolean;
+    freeUndo?: boolean;
+    freeRemove?: boolean;
+    freeHold?: boolean;
+    freeMirror?: boolean;
+    freeShrink?: boolean;
   }>();
 
   const emit = defineEmits<{
@@ -29,6 +42,8 @@
     (e: 'new-game'): void;
     (e: 'hold-piece', piece: Piece): void;
     (e: 'rotate-piece', piece: Piece): void;
+    (e: 'mirror-piece', piece: Piece): void;
+    (e: 'shrink-piece', piece: Piece): void;
   }>();
 
   const selectedPiece = ref<Piece | null>(null);
@@ -41,51 +56,56 @@
   const dragPosition = ref<{ x: number; y: number }>({ x: 0, y: 0 });
   const dragOffset = ref<{ x: number; y: number }>({ x: 0, y: 0 });
   const isTouchDrag = ref(false); // Track if current drag is from touch
-  const gridRef = ref<HTMLElement | null>(null);
+  const gridRef = ref<{ rootEl: HTMLElement | null } | null>(null);
+  const holdAreaRef = ref<HTMLElement | null>(null);
+  const isHoveringHoldArea = ref(false);
 
   // Calculate cell size based on grid size and screen size
   const cellSize = computed(() => {
     const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
-    const isMobile = screenWidth < 640;
+    const isMobile = screenWidth < MOBILE_BREAKPOINT_PX;
 
     if (isMobile) {
-      // On mobile, make cells smaller to fit
-      if (props.gridSize === 6) return 34;
-      if (props.gridSize === 7) return 28;
-      return 22; // 9x9
+      return CELL_SIZE_MOBILE[props.gridSize as keyof typeof CELL_SIZE_MOBILE] || CELL_SIZE_MOBILE[9];
     }
-
-    const maxSize = 40;
-    const minSize = 25;
-    if (props.gridSize === 6) return maxSize;
-    if (props.gridSize === 7) return 35;
-    return minSize; // 9x9
+    return CELL_SIZE_DESKTOP[props.gridSize as keyof typeof CELL_SIZE_DESKTOP] || CELL_SIZE_DESKTOP[9];
   });
 
   // Check ability availability based on game mode
-  const canUseUndo = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.totalGemsCollected > 0;
-    }
-    return props.undoUses > 0;
-  });
+  const canUseUndo = computed(() => canUseAbility('undo', props.gameMode, props.undoUses, props.freeUndo || false, props.totalGemsCollected));
 
-  const canUseRotate = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.totalGemsCollected > 0;
-    }
-    return props.rotateUses > 0;
-  });
+  const canUseRotate = computed(() => canUseAbility('rotate', props.gameMode, props.rotateUses, props.freeRotate || false, props.totalGemsCollected));
 
-  // Check if a specific piece can be rotated (either has resources or piece already rotated)
+  const canUseMirror = computed(() => canUseAbility('mirror', props.gameMode, props.mirrorUses, props.freeMirror || false, props.totalGemsCollected));
+
+  const canUseShrink = computed(() => canUseAbility('shrink', props.gameMode, props.shrinkUses, props.freeShrink || false, props.totalGemsCollected));
+
+  const canUseHold = computed(() => canUseAbility('hold', props.gameMode, props.holdUses, props.freeHold || false, props.totalGemsCollected));
+
+  const canUseRemoveBlock = computed(() =>
+    canUseAbility('remove', props.gameMode, props.removeBlockUses, props.freeRemove || false, props.totalGemsCollected),
+  );
+
+  // Check if a specific piece can be rotated
+  // A piece can be rotated if: user has rotate ability OR piece has already been rotated (making it free)
   function canRotatePiece(piece: Piece): boolean {
-    // If piece has already been rotated, subsequent rotations are free
-    if (piece.hasBeenRotated) {
-      return true;
-    }
-    // Otherwise, check if we have resources for the first rotation
-    return canUseRotate.value;
+    return canUseRotate.value || piece.hasBeenRotated === true;
   }
+
+  // Check if a specific piece can be mirrored
+  // A piece can be mirrored if: user has mirror ability OR piece has already been mirrored (making it free)
+  function canMirrorPiece(piece: Piece): boolean {
+    return canUseMirror.value || piece.hasBeenMirrored === true;
+  }
+
+  // Check abilities for held piece
+  const canRotateHeld = computed(() => {
+    return props.heldPiece ? canRotatePiece(props.heldPiece) : false;
+  });
+
+  const canMirrorHeld = computed(() => {
+    return props.heldPiece ? canMirrorPiece(props.heldPiece) : false;
+  });
 
   // Check if a piece can be placed anywhere on the grid in its current state
   function isPiecePlaceable(piece: Piece): boolean {
@@ -99,48 +119,13 @@
     return false;
   }
 
-  const canUseHold = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.totalGemsCollected > 0;
-    }
-    return props.holdUses > 0;
-  });
-
-  const canUseRemoveBlock = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return props.totalGemsCollected > 0;
-    }
-    return props.removeBlockUses > 0;
-  });
-
   // Display text for ability counts
-  const undoDisplayText = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return `💎`;
-    }
-    return props.undoUses;
-  });
-
-  const rotateDisplayText = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return `💎`;
-    }
-    return props.rotateUses;
-  });
-
-  const holdDisplayText = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return `💎`;
-    }
-    return props.holdUses;
-  });
-
-  const removeBlockDisplayText = computed(() => {
-    if (props.gameMode === 'free-play') {
-      return `💎`;
-    }
-    return props.removeBlockUses;
-  });
+  const undoDisplayText = computed(() => getAbilityDisplayText(props.gameMode, props.freeUndo || false, props.undoUses));
+  const rotateDisplayText = computed(() => getAbilityDisplayText(props.gameMode, props.freeRotate || false, props.rotateUses));
+  const holdDisplayText = computed(() => getAbilityDisplayText(props.gameMode, props.freeHold || false, props.holdUses));
+  const mirrorDisplayText = computed(() => getAbilityDisplayText(props.gameMode, props.freeMirror || false, props.mirrorUses));
+  const shrinkDisplayText = computed(() => getAbilityDisplayText(props.gameMode, props.freeShrink || false, props.shrinkUses));
+  const removeBlockDisplayText = computed(() => getAbilityDisplayText(props.gameMode, props.freeRemove || false, props.removeBlockUses));
 
   // Check if piece can be placed at hovered position
   const canPlaceAtHovered = computed(() => {
@@ -169,9 +154,22 @@
     return cells;
   });
 
+  // Get cells that would be cleared if piece is placed at hovered position
+  const cellsThatWouldClear = computed(() => {
+    if (!selectedPiece.value || !hoveredCell.value || !canPlaceAtHovered.value) {
+      return new Set<string>();
+    }
+
+    // Simulate placing the piece
+    const simulatedGrid = placePiece(props.grid, selectedPiece.value, hoveredCell.value.row, hoveredCell.value.col);
+
+    // Get cells that would clear
+    return getCellsThatWouldClear(simulatedGrid);
+  });
+
   // Calculate snapped position for drag preview
   const snappedDragPosition = computed(() => {
-    if (!isDragging.value || !draggedPiece.value || !gridRef.value) {
+    if (!isDragging.value || !draggedPiece.value || !gridRef.value?.rootEl) {
       return dragPosition.value;
     }
 
@@ -184,7 +182,7 @@
       };
     }
 
-    const gridRect = gridRef.value.getBoundingClientRect();
+    const gridRect = gridRef.value.rootEl.getBoundingClientRect();
     const cellPixelSize = gridRect.width / props.gridSize;
 
     // Calculate the top-left position of the hovered cell
@@ -234,31 +232,6 @@
     hoveredCell.value = null;
   }
 
-  function isPreviewCell(row: number, col: number): boolean {
-    return previewCells.value.some((cell) => cell.row === row && cell.col === col);
-  }
-
-  function getCellClass(row: number, col: number): string {
-    const isBox = props.gridSize === 9;
-    const isTopBoxBorder = isBox && row % 3 === 0 && row !== 0;
-    const isLeftBoxBorder = isBox && col % 3 === 0 && col !== 0;
-    const cellValue = props.grid[row]?.[col];
-    const isClearing = props.clearingCells.has(`${row}-${col}`);
-
-    // Gems no longer affect background, just use normal cell coloring
-    let bgColor = cellValue === 1 ? 'bg-blue-500' : 'bg-gray-800';
-
-    return `
-        ${bgColor}
-        border-gray-700
-        ${isTopBoxBorder ? 'border-t-2 border-t-gray-400' : ''}
-        ${isLeftBoxBorder ? 'border-l-2 border-l-gray-400' : ''}
-        ${isPreviewCell(row, col) ? (canPlaceAtHovered.value ? 'bg-green-400 border-green-500' : 'bg-red-400 border-red-500') : ''}
-        ${removeMode.value && cellValue === 1 ? 'hover:bg-red-500' : ''}
-        ${isClearing ? 'clearing-cell' : ''}
-      `;
-  }
-
   function toggleRemoveMode() {
     removeMode.value = !removeMode.value;
     if (removeMode.value) {
@@ -275,8 +248,8 @@
     // Detect if this is a touch event
     isTouchDrag.value = 'touches' in event;
 
-    const clientX = 'touches' in event ? event.touches[0]?.clientX ?? 0 : event.clientX;
-    const clientY = 'touches' in event ? event.touches[0]?.clientY ?? 0 : event.clientY;
+    const clientX = 'touches' in event ? (event.touches[0]?.clientX ?? 0) : event.clientX;
+    const clientY = 'touches' in event ? (event.touches[0]?.clientY ?? 0) : event.clientY;
 
     // Calculate offset to center of the piece shape (in grid cell units)
     const pieceWidth = (piece.shape[0]?.length || 0) * cellSize.value;
@@ -296,14 +269,30 @@
   function handleDragMove(event: MouseEvent | TouchEvent) {
     if (!isDragging.value) return;
 
-    const clientX = 'touches' in event ? event.touches[0]?.clientX ?? 0 : event.clientX;
-    const clientY = 'touches' in event ? event.touches[0]?.clientY ?? 0 : event.clientY;
+    const clientX = 'touches' in event ? (event.touches[0]?.clientX ?? 0) : event.clientX;
+    const clientY = 'touches' in event ? (event.touches[0]?.clientY ?? 0) : event.clientY;
 
     dragPosition.value = { x: clientX, y: clientY };
 
+    // Check if hovering over hold area (only if hold area is empty)
+    if (holdAreaRef.value && draggedPiece.value && draggedPiece.value !== props.heldPiece && !props.heldPiece) {
+      const holdRect = holdAreaRef.value.getBoundingClientRect();
+      const isOverHoldArea = clientX >= holdRect.left && clientX <= holdRect.right && clientY >= holdRect.top && clientY <= holdRect.bottom;
+
+      isHoveringHoldArea.value = isOverHoldArea;
+
+      if (isOverHoldArea) {
+        hoveredCell.value = null;
+        event.preventDefault();
+        return;
+      }
+    } else {
+      isHoveringHoldArea.value = false;
+    }
+
     // Update hovered cell based on drag position
-    if (gridRef.value) {
-      const gridRect = gridRef.value.getBoundingClientRect();
+    if (gridRef.value?.rootEl) {
+      const gridRect = gridRef.value.rootEl.getBoundingClientRect();
       // Apply the same 80px offset for touch events so the ghost aligns with the visual piece
       const touchOffset = isTouchDrag.value ? 80 : 0;
       const relX = clientX - gridRect.left;
@@ -327,8 +316,12 @@
   function handleDragEnd(event: MouseEvent | TouchEvent) {
     if (!isDragging.value || !draggedPiece.value) return;
 
+    // Check if dropped on hold area (only if hold area is empty)
+    if (isHoveringHoldArea.value && canUseHold.value && draggedPiece.value !== props.heldPiece && !props.heldPiece) {
+      emit('hold-piece', draggedPiece.value);
+    }
     // Try to place the piece at the hovered cell
-    if (hoveredCell.value && canPlaceAtHovered.value) {
+    else if (hoveredCell.value && canPlaceAtHovered.value) {
       emit('place-piece', draggedPiece.value, hoveredCell.value.row, hoveredCell.value.col);
     }
 
@@ -338,6 +331,7 @@
     draggedPiece.value = null;
     selectedPiece.value = null;
     hoveredCell.value = null;
+    isHoveringHoldArea.value = false;
 
     event.preventDefault();
   }
@@ -379,96 +373,53 @@
     <!-- Game Grid and Right Controls -->
     <div class="flex gap-2 sm:gap-4 items-start justify-center w-full">
       <!-- Game Grid -->
-      <div
+      <GameGrid
         ref="gridRef"
-        class="grid gap-0.5 bg-gray-700 p-0.5 sm:p-1 rounded-lg"
-        :style="{
-          gridTemplateColumns: `repeat(${gridSize}, ${cellSize}px)`,
-          gridTemplateRows: `repeat(${gridSize}, ${cellSize}px)`,
-        }"
-        @mouseleave="clearHover"
-      >
-        <div v-for="(row, rowIdx) in grid" :key="`row-${rowIdx}`" class="contents">
-          <div
-            v-for="(cell, colIdx) in row"
-            :key="`cell-${rowIdx}-${colIdx}`"
-            :class="getCellClass(rowIdx, colIdx)"
-            class="border transition-colors cursor-pointer relative flex items-center justify-center"
-            @click="handleCellClick(rowIdx, colIdx)"
-            @mouseenter="handleCellHover(rowIdx, colIdx)"
-          >
-            <div
-              v-if="cell === 2 || gemCells.some((g) => g.row === rowIdx && g.col === colIdx)"
-              class="w-4 h-4 rounded-full bg-linear-to-br from-purple-500 via-pink-500 to-yellow-500 animate-pulse"
-              style="box-shadow: 0 0 8px rgba(236, 72, 153, 0.6)"
-            />
-          </div>
-        </div>
-      </div>
+        :grid="grid"
+        :grid-size="gridSize"
+        :cell-size="cellSize"
+        :clearing-cells="clearingCells"
+        :gem-cells="gemCells"
+        :selected-piece="selectedPiece"
+        :hovered-cell="hoveredCell"
+        :remove-mode="removeMode"
+        @cell-click="handleCellClick"
+        @cell-hover="handleCellHover"
+        @clear-hover="clearHover"
+      />
 
       <!-- Right Side Controls -->
-      <div class="flex flex-col gap-1.5 sm:gap-3 items-center">
-        <!-- Hold Piece Area -->
-        <div class="flex flex-col gap-1 sm:gap-2">
-          <div class="text-2xs sm:text-xs text-center text-neutral-400">📦 Held</div>
-          <div
-            v-if="heldPiece"
-            :class="[
-              'p-1.5 sm:p-2 rounded-lg transition-all w-16 h-16 sm:w-25 sm:h-25 flex items-center justify-center cursor-grab active:cursor-grabbing',
-              selectedPiece === heldPiece ? 'bg-blue-700 scale-110' : 'bg-gray-700/50 border-2 border-dashed border-gray-500',
-              isDragging && draggedPiece === heldPiece ? 'opacity-50' : '',
-            ]"
-            @click="selectPiece(heldPiece)"
-            @mousedown="(e) => heldPiece && handleDragStart(e, heldPiece)"
-            @touchstart="(e) => heldPiece && handleDragStart(e, heldPiece)"
-          >
-            <div
-              class="grid gap-0.5"
-              :style="{
-                gridTemplateColumns: `repeat(${heldPiece.shape[0]?.length || 0}, 15px)`,
-                gridTemplateRows: `repeat(${heldPiece.shape.length}, 15px)`,
-              }"
-            >
-              <div v-for="(row, r) in heldPiece.shape" :key="`held-row-${r}`" class="contents">
-                <div
-                  v-for="(cell, c) in row"
-                  :key="`held-cell-${r}-${c}`"
-                  :class="cell === 1 ? 'bg-current' : 'bg-transparent'"
-                  :style="{ color: heldPiece.color }"
-                  class="rounded-sm"
-                />
-              </div>
-            </div>
-          </div>
-          <div
-            v-else
-            class="p-1.5 sm:p-2 rounded-lg transition-all w-16 h-16 sm:w-25 sm:h-25 flex items-center justify-center bg-gray-700/50 border-2 border-dashed border-gray-500"
-          >
-            <div class="text-2xs sm:text-xs text-center text-neutral-500">Empty</div>
-          </div>
-        </div>
-
-        <!-- Undo Button -->
-        <button
-          v-if="canUseUndo"
-          @click="emit('undo')"
-          class="w-20 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 bg-yellow-600 hover:bg-yellow-700 rounded text-[10px] sm:text-sm font-medium leading-tight"
-        >
-          Undo ({{ undoDisplayText }})
-        </button>
-
-        <!-- Remove Block Button -->
-        <button
-          v-if="canUseRemoveBlock"
-          @click="toggleRemoveMode"
-          :class="[
-            'w-20 sm:w-25 px-1 sm:px-2 py-1.5 sm:py-2 rounded text-[10px] sm:text-sm font-medium leading-tight',
-            removeMode ? 'bg-red-600 hover:bg-red-700' : 'bg-orange-600 hover:bg-orange-700',
-          ]"
-        >
-          {{ removeMode ? 'Cancel' : `Remove` }} ({{ removeBlockDisplayText }})
-        </button>
-      </div>
+      <GameControls
+        :undo-uses="undoUses"
+        :remove-block-uses="removeBlockUses"
+        :hold-uses="holdUses"
+        :held-piece="heldPiece"
+        :remove-mode="removeMode"
+        :can-use-undo="canUseUndo"
+        :can-use-remove-block="canUseRemoveBlock"
+        :can-use-hold="canUseHold"
+        :undo-display-text="undoDisplayText"
+        :remove-block-display-text="removeBlockDisplayText"
+        :hold-display-text="holdDisplayText"
+        :is-hovering-hold-area="isHoveringHoldArea"
+        :is-dragging="isDragging"
+        :dragged-piece="draggedPiece"
+        :selected-piece="selectedPiece"
+        :can-rotate-held="canRotateHeld"
+        :can-mirror-held="canMirrorHeld"
+        :can-shrink-held="canUseShrink"
+        :rotate-display-text="rotateDisplayText"
+        :mirror-display-text="mirrorDisplayText"
+        :shrink-display-text="shrinkDisplayText"
+        @undo="emit('undo')"
+        @toggle-remove-mode="toggleRemoveMode"
+        @select-held-piece="selectPiece(heldPiece!)"
+        @drag-start-held="(e) => handleDragStart(e, heldPiece!)"
+        @hold-area-ref="(ref) => (holdAreaRef = ref)"
+        @rotate-held="heldPiece && emit('rotate-piece', heldPiece)"
+        @mirror-held="heldPiece && emit('mirror-piece', heldPiece)"
+        @shrink-held="heldPiece && emit('shrink-piece', heldPiece)"
+      />
     </div>
 
     <!-- Available Pieces -->
@@ -477,63 +428,25 @@
         v-for="(piece, idx) in currentPieces"
         :key="`piece-${idx}-${piece.id}`"
         data-piece-container
-        class="flex flex-col gap-1 sm:gap-2 w-[72px] sm:w-30"
+        class="flex flex-col gap-1 sm:gap-2 w-18 sm:w-30"
       >
-        <div class="flex flex-col items-center">
-          <div
-            :class="[
-              'p-2 sm:p-3 rounded-lg cursor-grab active:cursor-grabbing transition-all touch-none w-[72px] h-[72px] sm:w-30 sm:h-30',
-              selectedPiece === piece ? 'bg-blue-700 scale-110' : 'bg-gray-700 hover:bg-gray-600',
-              isDragging && draggedPiece === piece ? 'opacity-50' : '',
-              !isPiecePlaceable(piece) ? 'opacity-40 saturate-0' : '',
-            ]"
-            @click="selectPiece(piece)"
-            @mousedown="(e) => handleDragStart(e, piece)"
-            @touchstart="(e) => handleDragStart(e, piece)"
-          >
-            <div class="flex items-center justify-center w-full h-full">
-              <div
-                class="grid gap-0.5"
-                :style="{
-                  gridTemplateColumns: `repeat(${piece.shape[0]?.length || 0}, 13px)`,
-                  gridTemplateRows: `repeat(${piece.shape.length}, 13px)`,
-                }"
-              >
-                <div v-for="(row, r) in piece.shape" :key="`piece-row-${r}`" class="contents">
-                  <div
-                    v-for="(cell, c) in row"
-                    :key="`piece-cell-${r}-${c}`"
-                    :class="cell === 1 ? 'bg-current' : 'bg-transparent'"
-                    :style="{ color: piece.color }"
-                    class="rounded-sm"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="flex flex-col sm:flex-row gap-0.5 sm:gap-2">
-          <button
-            @click="emit('rotate-piece', piece)"
-            :disabled="!canRotatePiece(piece)"
-            :class="[
-              'w-full sm:flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors',
-              canRotatePiece(piece) ? 'bg-blue-600/50 hover:bg-blue-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
-            ]"
-          >
-            🔃 ({{ rotateDisplayText }})
-          </button>
-          <button
-            @click="emit('hold-piece', piece)"
-            :disabled="!canUseHold"
-            :class="[
-              'w-full sm:flex-1 px-1 sm:px-2 py-1 text-[10px] sm:text-xs rounded transition-colors',
-              canUseHold ? 'bg-purple-600/50 hover:bg-purple-600/80' : 'bg-gray-600/30 cursor-not-allowed opacity-50',
-            ]"
-          >
-            📦 ({{ holdDisplayText }})
-          </button>
-        </div>
+        <PieceCard
+          :piece="piece"
+          :is-selected="selectedPiece === piece"
+          :is-dragging="isDragging && draggedPiece === piece"
+          :is-placeable="isPiecePlaceable(piece)"
+          :can-rotate="canRotatePiece(piece)"
+          :can-mirror="canMirrorPiece(piece)"
+          :can-shrink="canUseShrink"
+          :rotate-display-text="rotateDisplayText"
+          :mirror-display-text="mirrorDisplayText"
+          :shrink-display-text="shrinkDisplayText"
+          @select="selectPiece(piece)"
+          @drag-start="(e) => handleDragStart(e, piece)"
+          @rotate="emit('rotate-piece', piece)"
+          @mirror="emit('mirror-piece', piece)"
+          @shrink="emit('shrink-piece', piece)"
+        />
       </div>
     </div>
 
@@ -566,25 +479,3 @@
     </div>
   </div>
 </template>
-
-<style scoped>
-  @keyframes clearPulse {
-    0% {
-      transform: scale(1);
-      background-color: rgb(59 130 246);
-    }
-    50% {
-      transform: scale(1.1);
-      background-color: rgb(251 191 36);
-      box-shadow: 0 0 20px rgba(251, 191, 36, 0.8);
-    }
-    100% {
-      transform: scale(0.8);
-      opacity: 0;
-    }
-  }
-
-  .clearing-cell {
-    animation: clearPulse 0.4s ease-out forwards;
-  }
-</style>
