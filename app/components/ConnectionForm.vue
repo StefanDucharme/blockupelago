@@ -74,7 +74,7 @@
             type="checkbox"
             :checked="useSecureConnection"
             @change="emit('update:use-secure-connection', ($event.target as HTMLInputElement).checked)"
-            class="checkbox-field"
+            class="toggle-checkbox"
             id="secure-connection"
           />
           <label for="secure-connection" class="text-xs text-neutral-300 cursor-pointer">
