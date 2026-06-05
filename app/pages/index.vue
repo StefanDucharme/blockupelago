@@ -99,6 +99,7 @@
     addScoreMultiplier,
     addPieceSlot,
     reapplyArchipelagoItems,
+    resetItemEffects,
   } = useBlockudoku();
 
   const {
@@ -159,9 +160,10 @@
     }
   });
 
-  // Handle incoming Archipelago items
-  // Track the last processed item count (resets on page refresh to allow re-processing)
-  const lastProcessedItemCount = ref(0);
+  // Handle incoming Archipelago items.
+  // Initialize to the current length of the persisted receivedItems so we don't re-apply
+  // items that were already applied in a previous session.
+  const lastProcessedItemCount = ref(items.receivedItems.value.length);
 
   watch(
     () => items.receivedItems.value,
@@ -261,6 +263,9 @@
             break;
           case AP_ITEMS.MIRROR_ABILITY:
             addMirrorAbility();
+            break;
+          case AP_ITEMS.SHRINK_ABILITY:
+            addShrinkAbility();
             break;
 
           // Score multipliers
@@ -535,9 +540,12 @@
     }
   });
 
-  // Watch for milestone achievements and send checks
+  // Watch for milestone achievements and send checks.
+  // Guard on `status` (useState-based, shared across composable instances) rather than
+  // `archipelagoMode` which comes from a separate useArchipelagoItems() call that
+  // enableArchipelagoMode() in connect() does NOT update.
   watch([totalScore, totalLinesCleared, totalBoxesCleared, totalCombos, totalPiecesPlaced], () => {
-    if (!archipelagoMode.value) return;
+    if (status.value !== 'connected') return;
 
     const locationIds = checkMilestones();
     const newChecks: number[] = [];
@@ -561,7 +569,7 @@
 
   // Watch for gem collections and send checks
   watch(totalGemsCollected, () => {
-    if (!archipelagoMode.value) return;
+    if (status.value !== 'connected') return;
 
     const gemChecks = getCollectedGemChecks();
     if (gemChecks.length > 0) {
@@ -578,6 +586,15 @@
   function handleNewGame() {
     resetStats();
     initGame();
+  }
+
+  function handleSyncItems() {
+    // Reset processing counter so the watcher re-processes all items from scratch
+    lastProcessedItemCount.value = 0;
+    // Clear all current AP item effects so re-application doesn't stack on top
+    resetItemEffects();
+    // syncItems clears receivedItems then re-adds them all; the watcher applies them
+    syncItems();
   }
 
   function handleResetAllProgress() {
@@ -814,7 +831,7 @@
               <div v-if="status === 'connected'" class="pt-2">
                 <button
                   class="btn-secondary w-full text-xs"
-                  @click="syncItems()"
+                  @click="handleSyncItems()"
                   title="Reprocess all items from server (use if local data was cleared)"
                 >
                   🔄 Resync Items

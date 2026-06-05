@@ -28,10 +28,10 @@ import {
 import { consumeAbility } from '~/utils/abilities';
 import { usePersistentRef, clearAllPersistence } from './usePersistence';
 import {
-  getScoreLocationId,
-  getLineClearLocationId,
-  getBoxClearLocationId,
-  getPieceLocationId,
+  getScoreLocationIds,
+  getLineClearLocationIds,
+  getBoxClearLocationIds,
+  getPieceLocationIds,
   getGemLocationId,
   MAX_GEM_CHECKS,
 } from './useArchipelagoItems';
@@ -256,6 +256,7 @@ export function useBlockudoku() {
       removeBlockUses.value = 0;
       holdUses.value = 0;
       mirrorUses.value = 0;
+      shrinkUses.value = 0;
       scoreMultiplier.value = 1.0;
       baseMultiplier.value = 1.0;
       maxPieceSlots.value = 3;
@@ -612,6 +613,20 @@ export function useBlockudoku() {
     });
   }
 
+  // Reset all AP item effects to baseline (call before resyncing items)
+  function resetItemEffects() {
+    rotateUses.value = 0;
+    undoUses.value = 0;
+    removeBlockUses.value = 0;
+    holdUses.value = 0;
+    mirrorUses.value = 0;
+    shrinkUses.value = 0;
+    scoreMultiplier.value = DEFAULT_SCORE_MULTIPLIER;
+    baseMultiplier.value = DEFAULT_SCORE_MULTIPLIER;
+    maxPieceSlots.value = DEFAULT_PIECE_SLOTS;
+    unlockedPieceIds.value = [...STARTER_PIECE_IDS];
+  }
+
   // Add abilities
   function addUndoAbility() {
     undoUses.value++;
@@ -762,27 +777,16 @@ export function useBlockudoku() {
     }
   });
 
-  // Check for milestone achievements and return location IDs to send to AP
+  // Return location IDs for all milestones that have been reached.
+  // Uses >= so overshooting a milestone (e.g. scoring 4200 when 4000 is a milestone) still fires the check.
+  // Deduplication is handled by completedChecks in the watcher that calls this.
   function checkMilestones(): number[] {
-    const checks: number[] = [];
-
-    // Check score milestones
-    const scoreCheck = getScoreLocationId(totalScore.value);
-    if (scoreCheck) checks.push(scoreCheck);
-
-    // Check line clear milestones
-    const lineCheck = getLineClearLocationId(totalLinesCleared.value);
-    if (lineCheck) checks.push(lineCheck);
-
-    // Check box clear milestones
-    const boxCheck = getBoxClearLocationId(totalBoxesCleared.value);
-    if (boxCheck) checks.push(boxCheck);
-
-    // Check pieces placed milestones
-    const pieceCheck = getPieceLocationId(totalPiecesPlaced.value);
-    if (pieceCheck) checks.push(pieceCheck);
-
-    return checks;
+    return [
+      ...getScoreLocationIds(totalScore.value),
+      ...getLineClearLocationIds(totalLinesCleared.value),
+      ...getBoxClearLocationIds(totalBoxesCleared.value),
+      ...getPieceLocationIds(totalPiecesPlaced.value),
+    ];
   }
 
   return {
@@ -847,6 +851,7 @@ export function useBlockudoku() {
     // Archipelago unlocks
     unlockPiece,
     reapplyArchipelagoItems,
+    resetItemEffects,
     setGridSize,
     getCollectedGemChecks,
     addUndoAbility,
