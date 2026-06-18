@@ -122,7 +122,7 @@ export const PIECE_MILESTONES = [
 // Max individual gem checks (each gem collected = 1 check)
 export const MAX_GEM_CHECKS = 100;
 
-// Helper to get location ID for a milestone
+// Helper to get location ID for a milestone (exact match — used for debug/display)
 export function getScoreLocationId(score: number): number | null {
   const idx = SCORE_MILESTONES.indexOf(score);
   return idx >= 0 ? AP_LOCATIONS.SCORE_BASE + idx + 1 : null;
@@ -143,6 +143,31 @@ export function getPieceLocationId(pieces: number): number | null {
   return idx >= 0 ? AP_LOCATIONS.PIECES_BASE + idx + 1 : null;
 }
 
+// Return all location IDs for milestones that have been reached (>= comparison).
+// Using >= means a score that overshoots a milestone still triggers the check.
+// Deduplication is handled by completedChecks in the AP composable.
+export function getScoreLocationIds(score: number): number[] {
+  return SCORE_MILESTONES.map((m, i) => (score >= m ? AP_LOCATIONS.SCORE_BASE + i + 1 : null)).filter((id): id is number => id !== null);
+}
+
+export function getLineClearLocationIds(clears: number): number[] {
+  return LINE_CLEAR_MILESTONES.map((m, i) => (clears >= m ? AP_LOCATIONS.LINE_CLEAR_BASE + i + 1 : null)).filter(
+    (id): id is number => id !== null,
+  );
+}
+
+export function getBoxClearLocationIds(clears: number): number[] {
+  return BOX_CLEAR_MILESTONES.map((m, i) => (clears >= m ? AP_LOCATIONS.BOX_CLEAR_BASE + i + 1 : null)).filter(
+    (id): id is number => id !== null,
+  );
+}
+
+export function getPieceLocationIds(pieces: number): number[] {
+  return PIECE_MILESTONES.map((m, i) => (pieces >= m ? AP_LOCATIONS.PIECES_BASE + i + 1 : null)).filter(
+    (id): id is number => id !== null,
+  );
+}
+
 export function getGemLocationId(gemNumber: number): number | null {
   // Each gem gets its own check, up to MAX_GEM_CHECKS
   if (gemNumber >= 1 && gemNumber <= MAX_GEM_CHECKS) {
@@ -157,8 +182,9 @@ export function getGemLocationId(gemNumber: number): number | null {
 export function useArchipelagoItems() {
   const archipelagoMode = usePersistentRef('blockudoku_ap_mode', false);
   const completedChecks = usePersistentRef<Set<number>>('blockudoku_ap_checks', new Set());
-  // Don't persist receivedItems - let Archipelago re-send on refresh
-  const receivedItems = ref<number[]>([]);
+  // Persist receivedItems so new-game ability restoration works after page refresh.
+  // lastProcessedItemCount in index.vue is initialized to receivedItems.length to avoid re-applying on load.
+  const receivedItems = usePersistentRef<number[]>('blockudoku_ap_received_items', []);
 
   // Ensure completedChecks is a Set
   function ensureChecksIsSet() {
@@ -213,11 +239,24 @@ export function useArchipelagoItems() {
     }
   }
 
-  // Receive an item from Archipelago (add to non-persistent list)
+  // Receive an item from Archipelago
   function receiveItem(itemId: number): boolean {
     // Always add the item (duplicates indicate multiple copies)
     receivedItems.value = [...receivedItems.value, itemId];
+    // Write immediately — the usePersistentRef watcher is async so we can't rely on it
+    // for cases where resetStats reads receivedItems synchronously after receipt.
+    if (import.meta.client) {
+      localStorage.setItem('blockupelago_blockudoku_ap_received_items', JSON.stringify(receivedItems.value));
+    }
     return true;
+  }
+
+  // Clear all received items (used by resync to start fresh)
+  function clearReceivedItems() {
+    receivedItems.value = [];
+    if (import.meta.client) {
+      localStorage.setItem('blockupelago_blockudoku_ap_received_items', JSON.stringify([]));
+    }
   }
 
   // Check if we have an item
@@ -240,6 +279,7 @@ export function useArchipelagoItems() {
     enableArchipelagoMode,
     disableArchipelagoMode,
     receiveItem,
+    clearReceivedItems,
     hasItem,
     debugCompleteLocation,
 
@@ -258,6 +298,10 @@ export function useArchipelagoItems() {
     getLineClearLocationId,
     getBoxClearLocationId,
     getPieceLocationId,
+    getScoreLocationIds,
+    getLineClearLocationIds,
+    getBoxClearLocationIds,
+    getPieceLocationIds,
     getGemLocationId,
   };
 }

@@ -414,29 +414,27 @@ export function useArchipelago() {
       return;
     }
 
+    // Clear current received items so the watcher re-processes from scratch without stacking
+    items.clearReceivedItems();
+
     // Reset the highest processed index to force reprocessing
     resetArchipelagoState();
 
     addLogMessage('Resyncing items from server...', 'info');
 
-    // Process all received items
+    // Re-add all items from the AP client — the watcher in index.vue will apply them
     if (client.items.received && client.items.received.length > 0) {
       const allItems = client.items.received;
       for (let i = 0; i < allItems.length; i++) {
         const item = allItems[i];
         if (!item) continue;
 
-        // Update the highest index
         highestItemIndexProcessed = i;
         if (import.meta.client) {
           localStorage.setItem('blockupelago_ap_highestItemIndex', i.toString());
         }
 
-        // Process the item
-        const itemName = handleItemReceived(item.id);
-        if (itemName) {
-          addLogMessage(`Resynced: ${itemName}`, 'item');
-        }
+        handleItemReceived(item.id);
       }
       addLogMessage(`Resynced ${allItems.length} item(s).`, 'info');
     } else {
