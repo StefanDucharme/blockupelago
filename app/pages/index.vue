@@ -1,5 +1,8 @@
 <script setup lang="ts">
   import { computed, watch, ref } from 'vue';
+
+  declare const __APP_VERSION__: string;
+  const appVersion = __APP_VERSION__;
   import BlockudokuBoard from '~/components/BlockudokuBoard.vue';
   import ThemePicker from '~/components/ThemePicker.vue';
   import { useBlockudoku } from '~/composables/useBlockudoku';
@@ -1387,7 +1390,7 @@
           <div v-if="lastMessage" class="text-2xs sm:text-xs text-neutral-400 truncate ml-auto hidden sm:block">
             Latest Message: {{ lastMessage }}
           </div>
-          <div class="text-xs text-neutral-400 truncate ml-auto">v0.2.0</div>
+          <div class="text-xs text-neutral-400 truncate ml-auto">v{{ appVersion }}</div>
         </div>
       </div>
     </footer>
